@@ -1,7 +1,12 @@
 // src/components/Buy.jsx
-import React, { useEffect, useMemo, useState } from "react";
-import { createOrder } from "../api/publicAPI";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import "./Buy.css";
+import { loadRazorpay } from "../utils/loadRazorpay";
+import {
+  createOrder,
+  createRazorpayOrder,
+  verifyRazorpayPayment,
+} from "../api/publicAPI";
 
 const BuyModal = ({ open, onClose, product, quantity, user, onSuccess }) => {
   const [orderLoading, setOrderLoading] = useState(false);
@@ -42,15 +47,21 @@ const BuyModal = ({ open, onClose, product, quantity, user, onSuccess }) => {
     };
   }, [open]);
 
-  // ESC to close
+  // Prevent closing while processing
+  const safeClose = useCallback(() => {
+    if (orderLoading) return;
+    onClose?.();
+  }, [orderLoading, onClose]);
+
+  // ESC to close (disable during loading)
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => {
-      if (e.key === "Escape") onClose?.();
+      if (e.key === "Escape" && !orderLoading) safeClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, orderLoading, safeClose]);
 
   if (!open) return null;
 
@@ -60,7 +71,8 @@ const BuyModal = ({ open, onClose, product, quantity, user, onSuccess }) => {
   };
 
   const validateForm = () => {
-    const { fullName, phoneNumber, email, address, city, state, pincode } = orderForm;
+    const { fullName, phoneNumber, email, address, city, state, pincode } =
+      orderForm;
 
     if (!fullName.trim()) return alert("Please enter your full name"), false;
 
@@ -86,6 +98,7 @@ const BuyModal = ({ open, onClose, product, quantity, user, onSuccess }) => {
 
     setOrderLoading(true);
     try {
+      // 1) Create DB order first (pending)
       const orderData = {
         product_id: product.id,
         product_name: product.name,
@@ -101,31 +114,102 @@ const BuyModal = ({ open, onClose, product, quantity, user, onSuccess }) => {
         payment_status: "pending",
       };
 
-      await createOrder(orderData);
-      alert("✅ Order placed! You will receive an email once the admin confirms your order.");
-      onSuccess?.();
+      const created = await createOrder(orderData);
+      console.log("Created DB order:", created);
+
+      const dbOrderId = created?.id;
+      if (!dbOrderId) {
+        throw new Error(
+          "Order created but missing 'id' in backend response. Ensure /orders POST returns {id: ...}."
+        );
+      }
+
+      // 2) Load Razorpay SDK
+      const ok = await loadRazorpay();
+      if (!ok) throw new Error("Razorpay SDK failed to load");
+
+      // 3) Create Razorpay order
+      const rp = await createRazorpayOrder({
+        dbOrderId,
+        amountInr: orderData.total_amount,
+        email: orderForm.email,
+        phone: orderForm.phoneNumber,
+      });
+
+      console.log("Razorpay create-order response:", rp);
+
+      // 4) Open checkout
+      const options = {
+        key: rp.keyId,
+        amount: rp.amount, // paise
+        currency: rp.currency || "INR",
+        name: "ELVORA",
+        description: `Order #${dbOrderId}`,
+        order_id: rp.razorpayOrderId, // must match backend response name
+        prefill: rp.prefill || {
+          name: orderForm.fullName,
+          email: orderForm.email,
+          contact: orderForm.phoneNumber,
+        },
+        handler: async (response) => {
+          try {
+            // 5) Verify payment
+            await verifyRazorpayPayment({
+              dbOrderId,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+
+            alert("✅ Payment successful! Order placed.");
+            onSuccess?.();
+          } catch (e) {
+            console.error("Verify failed:", e);
+            alert("Payment done, but verification failed. Please contact support.");
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            alert("Payment cancelled.");
+          },
+        },
+      };
+
+      // NOTE: requires window.Razorpay typing fix (razorpay.d.ts)
+      const rzp = new window.Razorpay(options);
+
+      rzp.on("payment.failed", function (resp) {
+        console.error("Payment failed:", resp?.error);
+        alert("❌ Payment failed. Please try again.");
+      });
+
+      rzp.open();
     } catch (err) {
-      console.error("Failed to create order:", err);
-      const msg =
-        typeof err?.message === "string" && err.message.trim()
-          ? err.message
-          : "Failed to place order. Please try again.";
-      alert(msg);
+      console.error(err);
+      alert(err?.message || "Failed. Please try again.");
     } finally {
       setOrderLoading(false);
     }
   };
 
   return (
-    <div className="buy-overlay" onMouseDown={onClose}>
+    <div className="buy-overlay" onMouseDown={safeClose}>
       <div className="buy-modal" onMouseDown={(e) => e.stopPropagation()}>
         <div className="buy-head">
           <div>
             <h2 className="buy-title">Complete Your Order</h2>
-            <p className="buy-sub">Premium checkout • Clean details • Fast confirmation</p>
+            <p className="buy-sub">
+              Premium checkout • Clean details • Fast confirmation
+            </p>
           </div>
 
-          <button className="buy-close" onClick={onClose} disabled={orderLoading} aria-label="Close">
+          <button
+            className="buy-close"
+            onClick={safeClose}
+            disabled={orderLoading}
+            aria-label="Close"
+            type="button"
+          >
             ×
           </button>
         </div>
@@ -140,7 +224,9 @@ const BuyModal = ({ open, onClose, product, quantity, user, onSuccess }) => {
             </div>
             <div className="buy-row">
               <span>Price</span>
-              <span>₹{product?.price} × {quantity}</span>
+              <span>
+                ₹{product?.price} × {quantity}
+              </span>
             </div>
             <div className="buy-row buy-total">
               <span>Total</span>
@@ -246,18 +332,28 @@ const BuyModal = ({ open, onClose, product, quantity, user, onSuccess }) => {
         </div>
 
         <div className="buy-actions">
-          <button className="buy-btn buy-outline" onClick={onClose} disabled={orderLoading}>
+          <button
+            className="buy-btn buy-outline"
+            onClick={safeClose}
+            disabled={orderLoading}
+            type="button"
+          >
             Cancel
           </button>
 
-          <button className="buy-btn buy-primary" onClick={handleSubmit} disabled={orderLoading}>
+          <button
+            className="buy-btn buy-primary"
+            onClick={handleSubmit}
+            disabled={orderLoading}
+            type="button"
+          >
             {orderLoading ? (
               <>
                 <span className="buy-miniSpin" />
                 Processing...
               </>
             ) : (
-              "✅ Confirm Order"
+              `Pay ₹${Number(totalPrice).toFixed(2)}`
             )}
           </button>
         </div>

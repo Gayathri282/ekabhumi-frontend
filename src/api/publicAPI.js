@@ -84,3 +84,48 @@ export async function fetchOrdersByEmail(email) {
 
   return await res.json();
 }
+
+
+export async function createRazorpayOrder({ dbOrderId, amountInr, email, phone }) {
+  const url = getUrl("/payments/razorpay/create-order");
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      order_id: dbOrderId,
+      amount: amountInr,
+      email,
+      phone,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || `Failed to create Razorpay order (${res.status})`);
+  }
+
+  return await res.json();
+}
+
+export async function verifyRazorpayPayment({ dbOrderId, razorpay_order_id, razorpay_payment_id, razorpay_signature }) {
+  const url = getUrl("/payments/razorpay/verify");
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      dbOrderId,
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(text || `Payment verification failed (${res.status})`);
+  }
+
+  return await res.json();
+}
