@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import Home from "./pages/Home";
 import ProductDetails from "./pages/ProductDetails.jsx";
 import Account from "./pages/Account";
-
+import ReviewLogin from "./pages/ReviewLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute"; // Update import
 
@@ -27,6 +27,7 @@ function App() {
         />
         
         {/* Catch all route - redirect to home */}
+          <Route path="/review" element={<ReviewLogin />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

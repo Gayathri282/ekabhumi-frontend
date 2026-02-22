@@ -4,11 +4,17 @@ const API_BASE =
 
 const getUrl = (endpoint) => API_BASE + endpoint;
 
+const getAuthHeaders = () => {
+  const token = localStorage.getItem("access_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
 export async function fetchProducts() {
   const res = await fetch(getUrl("/products"), {
     headers: {
       Accept: "application/json",
       "Cache-Control": "no-cache",
+      ...getAuthHeaders(),
     },
     mode: "cors",
     credentials: "omit",
@@ -37,10 +43,11 @@ export async function fetchProducts() {
 }
 
 export async function fetchProductById(id) {
-  const url = getUrl(`/products/${id}`);
-
-  const res = await fetch(url, {
-    headers: { Accept: "application/json" },
+  const res = await fetch(getUrl(`/products/${id}`), {
+    headers: {
+      Accept: "application/json",
+      ...getAuthHeaders(),
+    },
   });
 
   if (!res.ok) {
@@ -53,13 +60,12 @@ export async function fetchProductById(id) {
 
 
 export async function createOrder(orderData) {
-  const url = getUrl("/orders");
-
-  const res = await fetch(url, {
+  const res = await fetch(getUrl("/orders"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
+      ...getAuthHeaders(),
     },
     body: JSON.stringify(orderData),
   });
@@ -74,7 +80,7 @@ export async function createOrder(orderData) {
 
 export async function fetchOrdersByEmail(email) {
   const res = await fetch(getUrl(`/orders?email=${encodeURIComponent(email)}`), {
-    headers: { Accept: "application/json" },
+    headers: { Accept: "application/json", ...getAuthHeaders() },
   });
 
   if (!res.ok) {
@@ -91,7 +97,11 @@ export async function createRazorpayOrder({ dbOrderId, amountInr, email, phone }
 
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify({
       order_id: dbOrderId,
       amount: amountInr,
@@ -108,12 +118,21 @@ export async function createRazorpayOrder({ dbOrderId, amountInr, email, phone }
   return await res.json();
 }
 
-export async function verifyRazorpayPayment({ dbOrderId, razorpay_order_id, razorpay_payment_id, razorpay_signature }) {
+export async function verifyRazorpayPayment({
+  dbOrderId,
+  razorpay_order_id,
+  razorpay_payment_id,
+  razorpay_signature,
+}) {
   const url = getUrl("/payments/razorpay/verify");
 
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...getAuthHeaders(),
+    },
     body: JSON.stringify({
       dbOrderId,
       razorpay_order_id,
