@@ -2,21 +2,37 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import Home from "./pages/Home";
 import ProductDetails from "./pages/ProductDetails.jsx";
 import Account from "./pages/Account";
-import ReviewLogin from "./pages/ReviewLogin";
 import AdminDashboard from "./pages/AdminDashboard";
-import ProtectedRoute from "./components/ProtectedRoute"; // Update import
+import ProtectedRoute from "./components/ProtectedRoute";
+import ReviewLogin from "./pages/Review";
 
 function App() {
   return (
     <Router>
       <Routes>
-        {/* Public Routes */}
+        {/* Public */}
         <Route path="/" element={<Home />} />
-        <Route path="/products/:id" element={<ProductDetails />} />
-        <Route path="/account" element={<Account />} />
+        <Route path="/review-login" element={<ReviewLogin />} />
 
-        
-        {/* Protected Admin Route - Using ProtectedRoute */}
+        {/* Protected user routes */}
+        <Route
+          path="/products/:id"
+          element={
+            <ProtectedRoute>
+              <ProductDetails />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/account"
+          element={
+            <ProtectedRoute>
+              <Account />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin */}
         <Route
           path="/admin/dashboard"
           element={
@@ -25,9 +41,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-        
-        {/* Catch all route - redirect to home */}
-          <Route path="/review" element={<ReviewLogin />} />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
