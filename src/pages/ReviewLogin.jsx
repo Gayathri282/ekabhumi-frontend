@@ -1,47 +1,48 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const BACKEND = "https://ekb-backend.onrender.com";
+const API_URL =
+  process.env.REACT_APP_API_URL || "https://ekb-backend.onrender.com";
 
 export default function ReviewLogin() {
   const navigate = useNavigate();
-  const [status, setStatus] = useState("Signing you in for Razorpay review...");
+  const [message, setMessage] = useState("Signing you in for review...");
 
   useEffect(() => {
     const run = async () => {
-      const url = new URL(window.location.href);
-      const token = url.searchParams.get("token");
-
-      if (!token) {
-        setStatus("Missing token. Please use the full review link provided.");
-        return;
-      }
-
       try {
-        const res = await fetch(
-          `${BACKEND}/auth/review-login?token=${encodeURIComponent(token)}`,
-          { method: "GET" }
+        const url = new URL(window.location.href);
+        const token = url.searchParams.get("token");
+
+        if (!token) {
+          setMessage("Missing review token.");
+          return;
+        }
+
+        const response = await fetch(
+          `${API_URL}/auth/review-login?token=${encodeURIComponent(token)}`
         );
 
-        if (!res.ok) {
-          const text = await res.text().catch(() => "");
-          throw new Error(text || `HTTP ${res.status}`);
+        if (!response.ok) {
+          const text = await response.text().catch(() => "");
+          throw new Error(text || `HTTP ${response.status}`);
         }
 
-        const data = await res.json();
+        const data = await response.json();
 
         if (!data?.access_token) {
-          throw new Error("No access token returned from server");
+          throw new Error("No access token received");
         }
 
-        // Store token where your app expects it
+        // Store token under BOTH keys (important)
         localStorage.setItem("access_token", data.access_token);
+        localStorage.setItem("token", data.access_token);
 
-        setStatus("Access granted. Redirecting to products...");
-        navigate("/products", { replace: true }); // change if your products route differs
+        setMessage("Access granted. Redirecting...");
+        navigate("/", { replace: true });
       } catch (err) {
-        console.error(err);
-        setStatus("Review login failed. Please contact support.");
+        console.error("Review login error:", err);
+        setMessage("Review login failed. Please contact support.");
       }
     };
 
@@ -49,9 +50,9 @@ export default function ReviewLogin() {
   }, [navigate]);
 
   return (
-    <div style={{ padding: 24, fontFamily: "system-ui" }}>
-      <h2 style={{ marginBottom: 8 }}>Review Access</h2>
-      <p style={{ margin: 0 }}>{status}</p>
+    <div style={{ padding: 24 }}>
+      <h2>Review Access</h2>
+      <p>{message}</p>
     </div>
   );
 }

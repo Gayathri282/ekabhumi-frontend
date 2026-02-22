@@ -5,7 +5,10 @@ const API_BASE =
 const getUrl = (endpoint) => API_BASE + endpoint;
 
 const getAuthHeaders = () => {
-  const token = localStorage.getItem("access_token");
+  const token =
+    localStorage.getItem("access_token") ||
+    localStorage.getItem("token");
+
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
