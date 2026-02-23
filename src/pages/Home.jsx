@@ -173,8 +173,7 @@ const Home = () => {
           <a href="#home">Home</a>
           <a href="#products">Products</a>
           <a href="#about">About</a>
-          <a href="#blog">Blog</a>
-          <a href="#testimonials">Testimonials</a>
+      
         </div>
 
         {/* ✅ No auth section at all */}
@@ -203,12 +202,7 @@ const Home = () => {
               <a className="mobileMenuItem" href="#about" onClick={closeMenu}>
                 About
               </a>
-              <a className="mobileMenuItem" href="#blog" onClick={closeMenu}>
-                Blog
-              </a>
-              <a className="mobileMenuItem" href="#testimonials" onClick={closeMenu}>
-                Testimonials
-              </a>
+              
             </div>
           </div>
         </div>
