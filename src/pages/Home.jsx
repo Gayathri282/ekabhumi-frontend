@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import "./Home.css";
 import About from "./About";
 import Blog from "./Blog";
-import Testimonial from "./Testimonial";
+
 import Footer from "./Footer";
 import { fetchProducts } from "../api/publicAPI";
 import { ADMIN_EMAILS } from "../config/auth";
@@ -504,9 +504,7 @@ const Home = () => {
         <Blog />
       </section>
 
-      <section id="testimonials" className="pageSection">
-        <Testimonial />
-      </section>
+      
 
       <Footer />
     </>
