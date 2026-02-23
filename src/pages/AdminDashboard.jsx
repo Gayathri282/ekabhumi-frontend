@@ -55,16 +55,21 @@ function AdminDashboard() {
     localStorage.setItem("clearedApprovedIds", JSON.stringify(clearedApprovedIds));
   }, [clearedApprovedIds]);
 
-  const isUserAdmin = () => {
-    const userData = localStorage.getItem("userData");
-    if (!userData) return false;
-    try {
-      const parsed = JSON.parse(userData);
-      return parsed.role === "admin" || parsed.isAdmin === true;
-    } catch {
-      return false;
-    }
-  };
+ const isUserAdmin = () => {
+  const token = localStorage.getItem("adminToken");
+  const userData = localStorage.getItem("userData");
+
+  // allow token-only (ProtectedRoute already does)
+  if (token && !userData) return true;
+
+  if (!userData) return false;
+  try {
+    const parsed = JSON.parse(userData);
+    return parsed.role === "admin" || parsed.isAdmin === true || !!token;
+  } catch {
+    return !!token;
+  }
+};
 
   const ensureJWTToken = useCallback(async () => {
     const t = localStorage.getItem("adminToken");
@@ -503,11 +508,12 @@ function AdminDashboard() {
                 </div>
               ) : (
                 <Orders
-                  orders={approvedOrders}
-                  mode="approved"
-                  selectedIds={approvedSelected}
-                  onToggleSelect={toggleApprovedSelect}
-                />
+  orders={pendingOrders}
+  onApprove={approveOrder}
+  mode="pending"
+  selectedIds={new Set()}
+  onToggleSelect={() => {}}
+/>
               )}
             </div>
           )}
@@ -624,13 +630,12 @@ function AdminDashboard() {
                     </button>
                   </div>
 
-                  <UpdateProduct
-                    product={selectedProduct}
-                    apiBase={API_BASE}
-                    onCancel={() => setActiveTab("products")}
-                    onSubmit={handleUpdateProduct}
-                    setError={setError}
-                  />
+                   <UpdateProduct
+  product={selectedProduct}
+  onCancel={() => setActiveTab("products")}
+  onSubmit={handleUpdateProduct}
+  setError={setError}
+/>
                 </>
               )}
             </div>

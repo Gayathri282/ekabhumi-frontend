@@ -1,4 +1,3 @@
-// src/pages/ProductDetails.jsx
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { fetchProductById } from "../api/publicAPI";
@@ -14,21 +13,7 @@ const ProductDetails = () => {
   const [error, setError] = useState("");
 
   const [quantity, setQuantity] = useState(1);
-
-  const [user, setUser] = useState(null);
   const [showBuy, setShowBuy] = useState(false);
-
-  // Check if user is logged in
-  useEffect(() => {
-    const userData = localStorage.getItem("userData");
-    if (userData) {
-      try {
-        setUser(JSON.parse(userData));
-      } catch (e) {
-        console.error("Error parsing user data:", e);
-      }
-    }
-  }, []);
 
   useEffect(() => {
     async function loadProduct() {
@@ -36,6 +21,7 @@ const ProductDetails = () => {
         setLoading(true);
         const data = await fetchProductById(id);
         setProduct(data);
+        setError("");
       } catch (err) {
         console.error("Failed to load product:", err);
         setError("Failed to load product details. Please try again.");
@@ -47,11 +33,7 @@ const ProductDetails = () => {
   }, [id]);
 
   const handleBuyNow = () => {
-    if (!user) {
-      alert("Please login to place an order!");
-      navigate("/");
-      return;
-    }
+    // ✅ No login requirement
     setShowBuy(true);
   };
 
@@ -85,12 +67,13 @@ const ProductDetails = () => {
     } else {
       next = [
         ...cart,
-        {
-          id: product.id,
-          name: product.name,
-          price: product.price,
-          qty: Number(quantity || 1),
-        },
+       {
+  id: product.id,
+  name: product.name,
+  price: product.price,
+  image_url: product.image_url,
+  qty: Number(quantity || 1),
+},
       ];
     }
 
@@ -161,7 +144,6 @@ const ProductDetails = () => {
               />
             </div>
 
-            {/* Trust chips (premium feel) */}
             <div className="pd-trustRow">
               <span className="pd-chip">Genuine</span>
               <span className="pd-chip">Fast delivery</span>
@@ -179,13 +161,11 @@ const ProductDetails = () => {
               <div className="pd-price">₹{product.price}</div>
             </div>
 
-            {/* Description */}
             <div className="pd-section">
               <h3 className="pd-h3">Description</h3>
               <p className="pd-desc">{product.description || "No description available."}</p>
             </div>
 
-            {/* Quantity */}
             <div className="pd-section">
               <h3 className="pd-h3">Quantity</h3>
               <div className="pd-qtyRow">
@@ -205,7 +185,6 @@ const ProductDetails = () => {
               <p className="pd-note">Choose how many units you want.</p>
             </div>
 
-            {/* Summary */}
             <div className="pd-summary">
               <div className="pd-srow">
                 <span>Price (each)</span>
@@ -221,41 +200,23 @@ const ProductDetails = () => {
               </div>
             </div>
 
-            {/* ✅ Desktop Sticky Actions (always visible on scroll) */}
+            {/* ✅ Desktop Sticky Actions */}
             <div className="pd-stickyActions">
               <div className="pd-ctaRow">
                 <button className="pd-btn pd-btn-soft pd-cta" onClick={addToCart}>
                   Add to Cart
                 </button>
 
-                <button
-                  className="pd-btn pd-btn-primary pd-cta"
-                  onClick={handleBuyNow}
-                  disabled={!user}
-                  title={!user ? "Login required" : "Buy now"}
-                >
+                <button className="pd-btn pd-btn-primary pd-cta" onClick={handleBuyNow}>
                   Buy Now
                 </button>
               </div>
-
-              {!user ? (
-                <div className="pd-loginHint">
-                  Login required to checkout.
-                  <button className="pd-linkBtn" onClick={() => navigate("/")}>
-                    Login
-                  </button>
-                </div>
-              ) : (
-                <button className="pd-btn pd-btn-outline pd-viewCart" onClick={() => navigate("/account")}>
-                  View Cart
-                </button>
-              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* ✅ Mobile Bottom Sticky Bar (always visible) */}
+      {/* ✅ Mobile Bottom Sticky Bar */}
       <div className="pd-bottomBar">
         <div className="pd-bottomInfo">
           <div className="pd-bottomTotal">
@@ -279,26 +240,19 @@ const ProductDetails = () => {
             Add to Cart
           </button>
 
-          <button
-            className="pd-btn pd-btn-primary pd-bottomBtn"
-            onClick={handleBuyNow}
-            disabled={!user}
-            title={!user ? "Login required" : "Buy now"}
-          >
+          <button className="pd-btn pd-btn-primary pd-bottomBtn" onClick={handleBuyNow}>
             Buy Now
           </button>
         </div>
-
-        {!user && <div className="pd-bottomHint">Login required to purchase</div>}
       </div>
 
-      {/* Buy Modal */}
+      {/* Buy Modal (user is null now) */}
       <BuyModal
         open={showBuy}
         onClose={() => setShowBuy(false)}
         product={product}
         quantity={quantity}
-        user={user}
+        user={null}
         onSuccess={() => {
           setShowBuy(false);
           navigate("/");

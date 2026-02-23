@@ -29,7 +29,7 @@ function Orders({
   mode = "pending",
   selectedIds,
   onToggleSelect,
-}) {
+})  {
   const [openId, setOpenId] = useState(null);
   const isApprovedMode = mode === "approved";
 

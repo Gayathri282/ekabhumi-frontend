@@ -1,43 +1,30 @@
-// src/components/ProtectedRoute.jsx
 import { Navigate } from "react-router-dom";
 
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
-  const userToken =
-    localStorage.getItem("userToken") ||
-    localStorage.getItem("access_token") ||
-    localStorage.getItem("token");
+  if (!requireAdmin) return children;
 
   const adminToken = localStorage.getItem("adminToken");
-  const userData = localStorage.getItem("userData"); // ✅ ADD BACK
+  const userDataRaw = localStorage.getItem("userData");
 
-  // No tokens at all
-  if (!userToken && !adminToken) {
-    return <Navigate to="/" replace />;
-  }
-
-  // Try to parse user data
+  let user = null;
   try {
-    let user = null;
-    if (userData) user = JSON.parse(userData);
-
-    // If admin access required
-    if (requireAdmin) {
-      const isAdmin =
-        (user && (user.role === "admin" || user.isAdmin === true)) || !!adminToken;
-
-      if (!isAdmin) return <Navigate to="/" replace />;
-    }
-
-    return children;
-  } catch (error) {
-    // Clear invalid data
-    localStorage.removeItem("userToken");
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("token");
+    user = userDataRaw ? JSON.parse(userDataRaw) : null;
+  } catch {
     localStorage.removeItem("userData");
-    localStorage.removeItem("adminToken");
-    return <Navigate to="/" replace />;
   }
+
+  // ✅ must be admin user (NOT just token)
+  const isAdminUser = !!user && (user.role === "admin" || user.isAdmin === true);
+
+  // ✅ require BOTH: token + admin user
+  if (!adminToken || !isAdminUser) {
+    // clean up (prevents non-admin gmail sticking around)
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("userData");
+    return <Navigate to="/admin" replace />;
+  }
+
+  return children;
 };
 
 export default ProtectedRoute;
