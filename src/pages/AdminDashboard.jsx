@@ -124,41 +124,36 @@ function AdminDashboard() {
     }
   }, [API_BASE, ensureJWTToken]);
 
-  useEffect(() => {
-    if (!isUserAdmin()) {
-      alert("Access denied. Admin privileges required.");
-      navigate("/");
-      return;
-    }
+ useEffect(() => {
+  if (!isUserAdmin()) {
+    alert("Access denied. Admin privileges required.");
+    navigate("/");
+    return;
+  }
 
-    const token = localStorage.getItem("adminToken");
-    if (!token) {
-      setLoading(false);
-      setError("Admin token missing. Please login again as admin.");
-      navigate("/");
-      return;
-    }
+  const token = localStorage.getItem("adminToken");
+  if (!token) {
+    setLoading(false);
+    setError("Admin token missing. Please login again as admin.");
+    navigate("/");
+    return;
+  }
 
-    const boot = async () => {
-      setLoading(true);
-      setError("");
-      await fetchOrders();
-      setLoading(false);
-    };
+  const boot = async () => {
+    setLoading(true);
+    setError("");
 
-    boot();
-  }, [fetchOrders, navigate]);
+    // ✅ Fetch both in parallel (fastest + fixes 0 issue)
+    await Promise.all([fetchOrders(), fetchProducts()]);
+
+    setLoading(false);
+  };
+
+  boot();   // 👈 KEEP THIS
+}, [fetchOrders, fetchProducts, navigate]);
 
   // on-demand products
-  useEffect(() => {
-    if (
-      (activeTab === "products" || activeTab === "addProduct" || activeTab === "updateProduct") &&
-      products.length === 0 &&
-      !loadingProducts
-    ) {
-      fetchProducts();
-    }
-  }, [activeTab, fetchProducts, products.length, loadingProducts]);
+
 
   // ✅ reset selection when leaving update tab
   useEffect(() => {
@@ -254,6 +249,8 @@ function AdminDashboard() {
       setError(e?.message || "Failed to add product");
     }
   };
+
+ 
 
   // ✅ NEW: update product submit (frontend ready; backend can be added later)
   const handleUpdateProduct = useCallback(
