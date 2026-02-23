@@ -327,25 +327,20 @@ function AdminDashboard() {
     [API_BASE, ensureJWTToken, fetchOrders]
   );
 
-  const pendingOrders = useMemo(
-    () => orders.filter((o) => String(o.status || "").toLowerCase() === "pending"),
-    [orders]
-  );
+const pendingOrders = useMemo(
+  () => orders.filter((o) => String(o.status || "").toLowerCase() === "pending"),
+  [orders]
+);
 
-  const approvedOrders = useMemo(() => {
-    const clearedSet = new Set(clearedApprovedIds);
-    return orders.filter((o) => {
-      const isApproved = String(o.status || "").toLowerCase() !== "pending";
-      const notCleared = !clearedSet.has(o.id);
-      return isApproved && notCleared;
-    });
-  }, [orders, clearedApprovedIds]);
+const approvedOrders = useMemo(() => {
+  const clearedSet = new Set(clearedApprovedIds);
 
-  useEffect(() => {
-    if (activeTab !== "approved") {
-      setApprovedSelected(new Set());
-    }
-  }, [activeTab]);
+  return orders.filter((o) => {
+    const status = String(o.status || "").toLowerCase();
+    const isApproved = status === "confirmed";
+    return isApproved && !clearedSet.has(o.id);
+  });
+}, [orders, clearedApprovedIds]);
 
   const toggleApprovedSelect = (orderId) => {
     setApprovedSelected((prev) => {
@@ -498,25 +493,25 @@ function AdminDashboard() {
           )}
 
           {/* Approved */}
-          {activeTab === "approved" && (
-            <div className={styles.card}>
-              {loadingOrders ? (
-                <div className={styles.emptyState}>
-                  <div className={styles.emptyStateIcon}>⏳</div>
-                  <h3>Loading Orders...</h3>
-                  <p>Please wait</p>
-                </div>
-              ) : (
-                <Orders
-  orders={pendingOrders}
-  onApprove={approveOrder}
-  mode="pending"
-  selectedIds={new Set()}
-  onToggleSelect={() => {}}
-/>
-              )}
-            </div>
-          )}
+         
+{activeTab === "approved" && (
+  <div className={styles.card}>
+    {loadingOrders ? (
+      <div className={styles.emptyState}>
+        <div className={styles.emptyStateIcon}>⏳</div>
+        <h3>Loading Orders...</h3>
+        <p>Please wait</p>
+      </div>
+    ) : (
+      <Orders
+        orders={approvedOrders}
+        mode="approved"
+        selectedIds={approvedSelected}
+        onToggleSelect={toggleApprovedSelect}
+      />
+    )}
+  </div>
+)}
 
           {/* Products */}
           {activeTab === "products" && (
