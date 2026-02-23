@@ -504,11 +504,12 @@ const approvedOrders = useMemo(() => {
       </div>
     ) : (
       <Orders
-        orders={approvedOrders}
-        mode="approved"
-        selectedIds={approvedSelected}
-        onToggleSelect={toggleApprovedSelect}
-      />
+  orders={approvedOrders}
+  mode="approved"
+  onApprove={() => {}}  // ✅ required prop satisfied
+  selectedIds={approvedSelected}
+  onToggleSelect={toggleApprovedSelect}
+/>
     )}
   </div>
 )}

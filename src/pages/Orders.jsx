@@ -1,3 +1,12 @@
+/**
+ * @typedef {Object} OrdersProps
+ * @property {any[]=} orders
+ * @property {"pending" | "approved"=} mode
+ * @property {(orderId:any)=>void=} onApprove
+ * @property {Set<any>=} selectedIds
+ * @property {(orderId:any)=>void=} onToggleSelect
+ */
+
 import { useState } from "react";
 import "./Orders.css";
 
@@ -5,7 +14,6 @@ function money(n) {
   return Number(n || 0).toFixed(2);
 }
 
-// ✅ Helper to format the order_date from the DB
 function formatOrderDate(dateString) {
   if (!dateString) return "-";
   try {
@@ -18,18 +26,21 @@ function formatOrderDate(dateString) {
       minute: "2-digit",
       hour12: true,
     });
-  } catch (e) {
+  } catch {
     return dateString;
   }
 }
 
-function Orders({
-  orders = [],
-  onApprove,
-  mode = "pending",
-  selectedIds,
-  onToggleSelect,
-})  {
+/** @param {OrdersProps} props */
+function Orders(props) {
+  const {
+    orders = [],
+    onApprove,
+    mode = "pending",
+    selectedIds,
+    onToggleSelect,
+  } = props;
+
   const [openId, setOpenId] = useState(null);
   const isApprovedMode = mode === "approved";
 
@@ -53,8 +64,9 @@ function Orders({
         const isOpen = openId === o.id;
         const status = String(o.status || "").toLowerCase();
         const isPending = status === "pending";
-
-        const isSelected = isApprovedMode ? !!selectedIds?.has(o.id) : false;
+        const isSelected = isApprovedMode
+          ? !!selectedIds?.has(o.id)
+          : false;
 
         return (
           <div key={o.id} className={`orderCard ${isOpen ? "open" : ""}`}>
@@ -66,7 +78,6 @@ function Orders({
               <div className="orderTopLeft">
                 <div className="orderId">Order #{o.id}</div>
                 <div className="orderSub">
-                  {/* ✅ Added Date & Time here next to the price */}
                   {formatOrderDate(o.order_date)} • ₹{money(o.total_amount)}
                 </div>
               </div>
@@ -93,6 +104,7 @@ function Orders({
                 >
                   {o.status}
                 </span>
+
                 <span className={`chev ${isOpen ? "up" : ""}`}>⌄</span>
               </div>
             </button>
@@ -100,36 +112,45 @@ function Orders({
             {isOpen && (
               <div className="orderExpand">
                 <div className="grid2">
-                  {/* ✅ Detailed Date Row */}
                   <div className="kv">
                     <div className="k">Order Placed</div>
-                    <div className="v">{formatOrderDate(o.order_date)}</div>
+                    <div className="v">
+                      {formatOrderDate(o.order_date)}
+                    </div>
                   </div>
+
                   <div className="kv">
                     <div className="k">Customer</div>
                     <div className="v">{o.customer_name || "-"}</div>
                   </div>
+
                   <div className="kv">
                     <div className="k">Phone</div>
                     <div className="v">{o.customer_phone || "-"}</div>
                   </div>
+
                   <div className="kv">
                     <div className="k">Product</div>
                     <div className="v">{o.product_name || "-"}</div>
                   </div>
+
                   <div className="kv">
                     <div className="k">Qty</div>
                     <div className="v">{o.quantity ?? "-"}</div>
                   </div>
+
                   <div className="kv">
                     <div className="k">Unit Price</div>
                     <div className="v">₹{money(o.unit_price)}</div>
                   </div>
+
                   <div className="kv">
                     <div className="k">Total Amount</div>
-                    <div className="v strong">₹{money(o.total_amount)}</div>
+                    <div className="v strong">
+                      ₹{money(o.total_amount)}
+                    </div>
                   </div>
-                  {/* ✅ Pincode Row (New) */}
+
                   <div className="kv">
                     <div className="k">Pincode</div>
                     <div className="v">{o.pincode || "-"}</div>
@@ -139,7 +160,8 @@ function Orders({
                 <div className="addrBox">
                   <div className="addrTitle">Shipping Address</div>
                   <div className="addrText">
-                    {o.shipping_address || "❌ Shipping address missing"}
+                    {o.shipping_address ||
+                      "❌ Shipping address missing"}
                   </div>
                 </div>
 
@@ -161,7 +183,8 @@ function Orders({
                     </button>
                   ) : (
                     <div className="approvedHint">
-                      This order was approved on {formatOrderDate(o.updated_at)}.
+                      This order was approved on{" "}
+                      {formatOrderDate(o.updated_at)}.
                     </div>
                   )}
                 </div>
