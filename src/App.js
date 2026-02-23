@@ -5,6 +5,10 @@ import Account from "./pages/Account";
 import AdminDashboard from "./pages/AdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ReviewLogin from "./pages/Review";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsAndConditions from "./pages/TermsAndConditions";
+import RefundAndCancellation from "./pages/RefundAndCancellation";
+import ShippingAndDelivery from "./pages/ShippingAndDelivery";
 
 function App() {
   return (
@@ -13,6 +17,10 @@ function App() {
         {/* Public */}
         <Route path="/" element={<Home />} />
         <Route path="/review-login" element={<ReviewLogin />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+         <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+         <Route path="/refund-and-cancellation" element={<RefundAndCancellation />} />
+         <Route path="/shipping-and-delivery" element={<ShippingAndDelivery />} />
 
         {/* Protected user routes */}
         <Route

@@ -22,24 +22,9 @@ const Footer = () => {
       icon: 'fab fa-instagram', 
       url: 'https://www.instagram.com/ekabhumih' 
     },
-    { 
-      id: 4, 
-      name: 'YouTube', 
-      icon: 'fab fa-youtube', 
-      url: 'https://www.youtube.com/c/ekabhumih' 
-    },
-    { 
-      id: 5, 
-      name: 'LinkedIn', 
-      icon: 'fab fa-linkedin-in', 
-      url: 'https://www.linkedin.com/company/ekabhumih' 
-    },
-    { 
-      id: 6, 
-      name: 'Pinterest', 
-      icon: 'fab fa-pinterest-p', 
-      url: 'https://www.pinterest.com/ekabhumih' 
-    }
+   
+   
+    
   ];
 
   
@@ -74,23 +59,22 @@ const Footer = () => {
 
             {/* Column 4: Contact & Social */}
             <div className="footer-column">
-              <h3 className="footer-title">Contact Info</h3>
+              <h3 className="footer-title">bhumihlifestyle@gmail.com</h3>
               <div className="contact-info">
                 <div className="contact-item">
                   <i className="fas fa-map-marker-alt"></i>
-                  <span>123 Hair Care Street, Beauty City, BC 12345</span>
+                  <span>kaloor,kochi</span>
                 </div>
                 <div className="contact-item">
                   <i className="fas fa-phone"></i>
-                  <span>+1 (234) 567-8900</span>
+                  <span>+91 7829033319</span>
                 </div>
                 <div className="contact-item">
                   <i className="fas fa-envelope"></i>
                   <span>info@ekabhumih.com</span>
                 </div>
                 <div className="contact-item">
-                  <i className="fas fa-clock"></i>
-                  <span>Mon - Fri: 9:00 AM - 6:00 PM</span>
+              
                 </div>
               </div>
 
@@ -131,10 +115,12 @@ const Footer = () => {
         <div className="container">
           <div className="footer-bottom-content">
             <p className="copyright">
-              © {new Date().getFullYear()} Eka Bhumih. All Rights Reserved. 
-              <a href="/privacy-policy"> Terms of Use</a> and 
-              <a href="/privacy-policy"> Privacy Policy</a>
-            </p>
+  © {new Date().getFullYear()} Eka Bhumih. All Rights Reserved.
+  <a href="/terms-and-conditions"> Terms & Conditions</a> •
+  <a href="/privacy-policy"> Privacy Policy</a> •
+  <a href="/refund-and-cancellation"> Refund & Cancellation</a> •
+  <a href="/shipping-and-delivery"> Shipping & Delivery</a>
+</p>
             <div className="payment-methods">
               <i className="fab fa-cc-visa"></i>
               <i className="fab fa-cc-mastercard"></i>
