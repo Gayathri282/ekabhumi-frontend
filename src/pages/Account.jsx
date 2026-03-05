@@ -104,9 +104,7 @@ function OrderCard({ order, onClick }) {
       {/* Product image */}
       <div style={{ width: 70, height: 70, borderRadius: 12, overflow: "hidden", flexShrink: 0, background: "#faf7f4" }}>
         {order.product_image_url
-          ? <img src={order.product_image_url} alt={order.product_name} style={{ width: "100%", height: "100%", objectFit: "cover" }}onError={(e) => {
-  e.currentTarget.src = "https://placehold.co/70x70/f5ede4/F26722?text=📦";
-}} />
+          ? <img src={order.product_image_url} alt={order.product_name} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.currentTarget.src = "https://placehold.co/70x70/f5ede4/F26722?text=📦"; }} />
           : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>📦</div>
         }
       </div>
@@ -166,9 +164,7 @@ function OrderModal({ order, onClose }) {
         <div style={{ display: "flex", gap: 14, padding: 16, background: "#faf7f4", borderRadius: 16, marginBottom: 20 }}>
           <div style={{ width: 64, height: 64, borderRadius: 10, overflow: "hidden", flexShrink: 0 }}>
             {order.product_image_url
-              ? <img src={order.product_image_url} alt={order.product_name} style={{ width: "100%", height: "100%", objectFit: "cover" }}onError={(e) => {
-  e.currentTarget.src = "https://placehold.co/70x70/f5ede4/F26722?text=📦";
-}} />
+              ? <img src={order.product_image_url} alt={order.product_name} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.currentTarget.src = "https://placehold.co/64x64/f5ede4/F26722?text=📦"; }} />
               : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>📦</div>
             }
           </div>
@@ -238,18 +234,28 @@ export default function Account() {
   const [selected, setSelected] = useState(null);
 
   const isLoggedIn = Boolean(accessToken);
-  const userEmail = userData?.email || "";
-  const userName = userData?.name || userEmail.split("@")[0] || "Guest";
+  const isAdmin    = userData?.role === "admin";
+  const userEmail  = userData?.email || "";
+  const userName   = userData?.name || userEmail.split("@")[0] || "Guest";
   const userAvatar = userData?.picture || null;
+
+  // Redirect admin to dashboard — they don't use this page
+  useEffect(() => {
+    if (isAdmin) navigate("/admin/dashboard", { replace: true });
+  }, [isAdmin, navigate]);
 
   /* fetch paid orders */
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      if (isLoggedIn) {
+      if (isLoggedIn && !isAdmin) {
+        // ✅ Only call /orders/me for regular users — admin JWT causes 422
         const data = await fetchMyOrders();
         setOrders(Array.isArray(data) ? data : []);
+      } else if (isAdmin) {
+        // Admin sees nothing here — they use the dashboard
+        setOrders([]);
       } else {
         // guest: fetch via tokens
         const tokens = getGuestTokens();
@@ -270,7 +276,7 @@ export default function Account() {
     } finally {
       setLoading(false);
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, isAdmin]);
 
   useEffect(() => { load(); }, [load]);
 

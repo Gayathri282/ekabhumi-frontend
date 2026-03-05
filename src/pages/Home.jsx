@@ -21,9 +21,9 @@ function initGoogleOneTap(callback) {
 }
 
 const Home = () => {
-  const [scrolled, setScrolled]     = useState(false);
-  const [menuOpen, setMenuOpen]     = useState(false);
-  const [isMobile, setIsMobile]     = useState(window.innerWidth <= 992);
+  const [scrolled, setScrolled]         = useState(false);
+  const [menuOpen, setMenuOpen]         = useState(false);
+  const [isMobile, setIsMobile]         = useState(window.innerWidth <= 992);
   const [loginLoading, setLoginLoading] = useState(false);
   const [showLoginDropdown, setShowLoginDropdown] = useState(false);
 
@@ -32,7 +32,6 @@ const Home = () => {
     catch { return []; }
   });
 
-  // Auth
   const [isLoggedIn, setIsLoggedIn] = useState(() => hasSession());
   const [userData, setUserData] = useState(() => {
     try { return JSON.parse(localStorage.getItem("userData") || "{}"); } catch { return {}; }
@@ -41,6 +40,9 @@ const Home = () => {
   const loginDropdownRef = useRef(null);
   const googleBtnRef     = useRef(null);
   const navigate         = useNavigate();
+
+  // ── is this user an admin? ──────────────────────────────
+  const isAdmin = userData?.role === "admin";
 
   const sortedProducts = useMemo(() => {
     if (!Array.isArray(products)) return [];
@@ -60,19 +62,21 @@ const Home = () => {
       const data = await googleLogin(googleIdToken);
 
       if (data?.role === "admin") {
+        // ✅ Use accessToken (same key as adminAPI reads)
         localStorage.setItem("accessToken", data.access_token);
-        localStorage.setItem("userData", JSON.stringify({ role: "admin", email: data.email }));
+        localStorage.setItem("userData", JSON.stringify({ role: "admin", email: data.email, name: data.name || "" }));
         window.google?.accounts?.id?.cancel();
         navigate("/admin/dashboard", { replace: true });
         return;
       }
 
-      // Store user data for navbar display
       const user = {
+        role: "user",
         email: data.email,
-        name:  data.name  || data.email?.split("@")[0] || "",
+        name: data.name || data.email?.split("@")[0] || "",
         picture: data.picture || null,
       };
+      localStorage.setItem("accessToken", data.access_token);
       localStorage.setItem("userData", JSON.stringify(user));
 
       setIsLoggedIn(true);
@@ -86,7 +90,6 @@ const Home = () => {
     }
   }, [navigate]);
 
-  // Init Google script
   useEffect(() => {
     const init = () => initGoogleOneTap(handleCredential);
     if (window.google?.accounts?.id) { init(); return; }
@@ -102,7 +105,6 @@ const Home = () => {
     }
   }, [handleCredential]);
 
-  // Render Google button when dropdown opens
   useEffect(() => {
     if (!showLoginDropdown || isLoggedIn) return;
     if (!googleBtnRef.current || !window.google?.accounts?.id) return;
@@ -114,7 +116,6 @@ const Home = () => {
     return () => clearTimeout(t);
   }, [showLoginDropdown, isLoggedIn]);
 
-  // Close dropdown on outside click
   useEffect(() => {
     if (!showLoginDropdown) return;
     const handler = (e) => {
@@ -127,6 +128,8 @@ const Home = () => {
 
   const handleLogout = () => {
     logout();
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("userData");
     setIsLoggedIn(false);
     setUserData({});
     setShowLoginDropdown(false);
@@ -180,18 +183,14 @@ const Home = () => {
     if (top?.id) navigate(`/products/${top.id}`);
   };
 
-  // ── User display helpers ────────────────────────────────
   const userEmail   = userData?.email || "";
   const userName    = userData?.name  || userEmail.split("@")[0] || "";
   const userPicture = userData?.picture || null;
   const userInitial = (userName[0] || userEmail[0] || "U").toUpperCase();
 
-  // ── Avatar (used in both desktop + mobile) ──────────────
   const Avatar = () => (
     userPicture
-      ? <img src={userPicture} alt={userName} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} onError={(e) => {
-  e.currentTarget.style.display = "none";
-}} />
+      ? <img src={userPicture} alt={userName} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} onError={e => { e.currentTarget.style.display = "none"; }} />
       : <span style={{ fontWeight: 800, fontSize: 15 }}>{userInitial}</span>
   );
 
@@ -199,21 +198,37 @@ const Home = () => {
   const AuthButton = () => (
     <div className="auth-wrap" ref={loginDropdownRef}>
       {isLoggedIn ? (
-        <button className="nav-auth-btn" onClick={() => setShowLoginDropdown(v => !v)} title={userEmail}
-          style={{ width: 38, height: 38, borderRadius: "50%", padding: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: userPicture ? "transparent" : "#F26722", color: "#fff", border: userPicture ? "2px solid #F26722" : "none" }}>
-          <Avatar />
-        </button>
+        isAdmin ? (
+          // ── Admin: show Dashboard button directly ──────
+          <button
+            className="nav-auth-btn nav-auth-btn--login"
+            onClick={() => navigate("/admin/dashboard")}
+            style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700 }}
+          >
+            ⚙️ Dashboard
+          </button>
+        ) : (
+          // ── Regular user: avatar + dropdown ───────────
+          <button
+            className="nav-auth-btn"
+            onClick={() => setShowLoginDropdown(v => !v)}
+            title={userEmail}
+            style={{ width: 38, height: 38, borderRadius: "50%", padding: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: userPicture ? "transparent" : "#F26722", color: "#fff", border: userPicture ? "2px solid #F26722" : "none" }}
+          >
+            <Avatar />
+          </button>
+        )
       ) : (
         <button className="nav-auth-btn nav-auth-btn--login" onClick={() => setShowLoginDropdown(v => !v)} disabled={loginLoading}>
           {loginLoading ? "Signing in…" : "Sign In"}
         </button>
       )}
 
-      {showLoginDropdown && (
+      {/* Dropdown — only for regular users, not admin */}
+      {showLoginDropdown && !isAdmin && (
         <div className="auth-dropdown">
           {isLoggedIn ? (
             <>
-              {/* User info */}
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderBottom: "1px solid #f0ebe4" }}>
                 <div style={{ width: 36, height: 36, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "#F26722", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 15 }}>
                   <Avatar />
@@ -280,14 +295,16 @@ const Home = () => {
             </div>
 
             <div className="mobileMenuSection">
-              {/* User card in mobile menu */}
+              {/* User/Admin card */}
               {isLoggedIn && (
-                <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "#fff7f2", borderRadius: 14, marginBottom: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: isAdmin ? "#fff3e8" : "#fff7f2", borderRadius: 14, marginBottom: 12 }}>
                   <div style={{ width: 42, height: 42, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "#F26722", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 17 }}>
-                    <Avatar />
+                    {isAdmin ? "⚙️" : <Avatar />}
                   </div>
                   <div>
-                    {userName && <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>{userName}</div>}
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>
+                      {isAdmin ? "Admin" : userName}
+                    </div>
                     <div style={{ fontSize: 12, color: "#999" }}>{userEmail}</div>
                   </div>
                 </div>
@@ -299,14 +316,27 @@ const Home = () => {
               <div className="mobileMenuDivider" />
 
               {isLoggedIn ? (
-                <>
-                  <button className="mobileMenuItem" onClick={() => { closeMenu(); navigate("/account"); }}>
-                    My Orders
-                  </button>
-                  <button className="mobileMenuItem mobileMenuItem--danger" onClick={() => { handleLogout(); closeMenu(); }}>
-                    Sign Out
-                  </button>
-                </>
+                isAdmin ? (
+                  // ── Admin mobile menu ───────────────────
+                  <>
+                    <button className="mobileMenuItem" onClick={() => { closeMenu(); navigate("/admin/dashboard"); }}>
+                      ⚙️ Admin Dashboard
+                    </button>
+                    <button className="mobileMenuItem mobileMenuItem--danger" onClick={() => { handleLogout(); closeMenu(); }}>
+                      Sign Out
+                    </button>
+                  </>
+                ) : (
+                  // ── Regular user mobile menu ────────────
+                  <>
+                    <button className="mobileMenuItem" onClick={() => { closeMenu(); navigate("/account"); }}>
+                      My Orders
+                    </button>
+                    <button className="mobileMenuItem mobileMenuItem--danger" onClick={() => { handleLogout(); closeMenu(); }}>
+                      Sign Out
+                    </button>
+                  </>
+                )
               ) : (
                 <div className="mobileMenuGoogleWrap">
                   <p className="mobileMenuLoginHint">Sign in to track your orders</p>

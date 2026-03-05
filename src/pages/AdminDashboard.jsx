@@ -10,20 +10,16 @@ import UpdateProduct from "./UpdateProduct";
 function AdminDashboard() {
   const navigate = useNavigate();
 
-  // orders | approved | products | addProduct | updateProduct | reviews
+  // orders | approved | products | addProduct | updateProduct
   const [activeTab, setActiveTab] = useState("orders");
 
-  const [products, setProducts] = useState([]);
-  const [orders, setOrders] = useState([]);
-  const [reviews, setReviews] = useState([]);
-  const [reviewsLoading, setReviewsLoading] = useState(false);
-
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts]           = useState([]);
+  const [orders, setOrders]               = useState([]);
+  const [loading, setLoading]             = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [loadingOrders, setLoadingOrders] = useState(true);
-
-  const [error, setError] = useState("");
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [error, setError]                 = useState("");
+  const [showAddForm, setShowAddForm]     = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
   const [newProduct, setNewProduct] = useState({
@@ -45,26 +41,25 @@ function AdminDashboard() {
     localStorage.setItem("clearedApprovedIds", JSON.stringify(clearedApprovedIds));
   }, [clearedApprovedIds]);
 
-  const isUserAdmin = () => {
-    const token = localStorage.getItem("adminToken");
-    const userData = localStorage.getItem("userData");
-    if (token && !userData) return true;
-    if (!userData) return false;
-    try {
-      const parsed = JSON.parse(userData);
-      return parsed.role === "admin" || parsed.isAdmin === true || !!token;
-    } catch { return !!token; }
-  };
-
-  const ensureJWTToken = useCallback(async () => {
-    return localStorage.getItem("adminToken") || null;
+  // ✅ Read from accessToken (same key used everywhere now)
+  const getToken = useCallback(() => {
+    return localStorage.getItem("accessToken") || null;
   }, []);
+
+  const isUserAdmin = useCallback(() => {
+    const token = getToken();
+    if (!token) return false;
+    try {
+      const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+      return userData.role === "admin";
+    } catch { return false; }
+  }, [getToken]);
 
   const fetchOrders = useCallback(async () => {
     try {
       setLoadingOrders(true);
-      const token = await ensureJWTToken();
-      if (!token) throw new Error("Admin token missing.");
+      const token = getToken();
+      if (!token) throw new Error("Not authenticated.");
       const res = await fetch(`${API_BASE}/admin/orders`, {
         headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       });
@@ -76,13 +71,13 @@ function AdminDashboard() {
     } finally {
       setLoadingOrders(false);
     }
-  }, [API_BASE, ensureJWTToken]);
+  }, [API_BASE, getToken]);
 
   const fetchProducts = useCallback(async () => {
     setLoadingProducts(true);
     try {
-      const token = await ensureJWTToken();
-      if (!token) throw new Error("Admin token missing.");
+      const token = getToken();
+      if (!token) throw new Error("Not authenticated.");
       const res = await fetch(`${API_BASE}/admin/admin-products`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -94,25 +89,7 @@ function AdminDashboard() {
     } finally {
       setLoadingProducts(false);
     }
-  }, [API_BASE, ensureJWTToken]);
-
-  const fetchReviews = useCallback(async () => {
-    setReviewsLoading(true);
-    try {
-      const token = await ensureJWTToken();
-      if (!token) throw new Error("Admin token missing.");
-      const res = await fetch(`${API_BASE}/admin/reviews`, {
-        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
-      });
-      if (!res.ok) throw new Error(`Reviews failed: ${res.status}`);
-      const data = await res.json().catch(() => []);
-      setReviews(Array.isArray(data) ? data : []);
-    } catch (e) {
-      setError(e?.message || "Failed to load reviews");
-    } finally {
-      setReviewsLoading(false);
-    }
-  }, [API_BASE, ensureJWTToken]);
+  }, [API_BASE, getToken]);
 
   useEffect(() => {
     if (!isUserAdmin()) {
@@ -120,27 +97,24 @@ function AdminDashboard() {
       navigate("/");
       return;
     }
-    const token = localStorage.getItem("adminToken");
-    if (!token) {
-      setLoading(false);
-      setError("Admin token missing.");
-      navigate("/");
-      return;
-    }
     const boot = async () => {
       setLoading(true);
       setError("");
-      await Promise.all([fetchOrders(), fetchProducts(), fetchReviews()]);
+      await Promise.all([fetchOrders(), fetchProducts()]);
       setLoading(false);
     };
     boot();
-  }, [fetchOrders, fetchProducts, fetchReviews, navigate]);
+  }, [fetchOrders, fetchProducts, isUserAdmin, navigate]);
 
   useEffect(() => {
     if (activeTab !== "updateProduct") setSelectedProduct(null);
   }, [activeTab]);
 
-  const logout = () => { localStorage.clear(); navigate("/"); };
+  const logout = () => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("userData");
+    navigate("/");
+  };
 
   const handleImageError = (e) => {
     const img = e.currentTarget;
@@ -151,7 +125,7 @@ function AdminDashboard() {
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this product?")) return;
     try {
-      const token = await ensureJWTToken();
+      const token = getToken();
       const res = await fetch(`${API_BASE}/admin/delete-product/${id}`, {
         method: "DELETE", headers: { Authorization: `Bearer ${token}` },
       });
@@ -168,7 +142,7 @@ function AdminDashboard() {
     if (!newProduct.name || !newProduct.price || !newProduct.description)
       return setError("Please fill all required fields");
     try {
-      const token = await ensureJWTToken();
+      const token = getToken();
       const formData = new FormData();
       formData.append("name", newProduct.name);
       formData.append("price", newProduct.price.toString());
@@ -192,7 +166,7 @@ function AdminDashboard() {
 
   const handleUpdateProduct = useCallback(async (payload) => {
     try {
-      const token = await ensureJWTToken();
+      const token = getToken();
       const formData = new FormData();
       formData.append("name", payload.name);
       formData.append("price", String(payload.price));
@@ -210,11 +184,11 @@ function AdminDashboard() {
       setError("");
       setActiveTab("products");
     } catch (e) { setError(e?.message || "Failed to update"); }
-  }, [API_BASE, ensureJWTToken, fetchProducts]);
+  }, [API_BASE, getToken, fetchProducts]);
 
   const approveOrder = useCallback(async (orderId) => {
     try {
-      const token = await ensureJWTToken();
+      const token = getToken();
       const res = await fetch(`${API_BASE}/admin/orders/${orderId}/approve`, {
         method: "POST", headers: { Authorization: `Bearer ${token}` },
       });
@@ -222,31 +196,7 @@ function AdminDashboard() {
       await fetchOrders();
       alert("✅ Order approved!");
     } catch (e) { const m = e?.message || "Failed"; setError(m); alert(m); }
-  }, [API_BASE, ensureJWTToken, fetchOrders]);
-
-  // ── review actions ──────────────────────────────────────────────────────────
-  const approveReview = useCallback(async (reviewId) => {
-    try {
-      const token = await ensureJWTToken();
-      const res = await fetch(`${API_BASE}/admin/reviews/${reviewId}/approve`, {
-        method: "PATCH", headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(`Approve failed: ${res.status}`);
-      await fetchReviews();
-    } catch (e) { setError(e?.message || "Failed to approve review"); }
-  }, [API_BASE, ensureJWTToken, fetchReviews]);
-
-  const deleteReview = useCallback(async (reviewId) => {
-    if (!window.confirm("Delete this review?")) return;
-    try {
-      const token = await ensureJWTToken();
-      const res = await fetch(`${API_BASE}/admin/reviews/${reviewId}`, {
-        method: "DELETE", headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
-      await fetchReviews();
-    } catch (e) { setError(e?.message || "Failed to delete review"); }
-  }, [API_BASE, ensureJWTToken, fetchReviews]);
+  }, [API_BASE, getToken, fetchOrders]);
 
   const pendingOrders = useMemo(
     () => orders.filter((o) => String(o.status || "").toLowerCase() === "pending"),
@@ -260,8 +210,6 @@ function AdminDashboard() {
       return status === "confirmed" && !clearedSet.has(o.id);
     });
   }, [orders, clearedApprovedIds]);
-
-  const pendingReviews = useMemo(() => reviews.filter((r) => !r.approved), [reviews]);
 
   const toggleApprovedSelect = (orderId) => {
     setApprovedSelected((prev) => {
@@ -288,8 +236,11 @@ function AdminDashboard() {
   const openUpdate = (product) => { setSelectedProduct(product); setActiveTab("updateProduct"); };
 
   const title = {
-    orders: "Pending Orders", approved: "Approved Orders", products: "Products",
-    addProduct: "Add Product", updateProduct: "Update Product", reviews: "Reviews",
+    orders: "Pending Orders",
+    approved: "Approved Orders",
+    products: "Products",
+    addProduct: "Add Product",
+    updateProduct: "Update Product",
   }[activeTab] || "";
 
   if (loading) {
@@ -307,7 +258,7 @@ function AdminDashboard() {
       <div className={styles.topbar}>
         <div className={styles.brand}>
           <div className={styles.brandTitle}>Admin</div>
-          <div className={styles.brandSub}>Orders • Products • Reviews</div>
+          <div className={styles.brandSub}>Orders • Products</div>
         </div>
         <button className={styles.logoutBtn} onClick={logout} type="button">Logout</button>
       </div>
@@ -325,7 +276,6 @@ function AdminDashboard() {
             <h2 className={styles.sectionTitle}>{title}</h2>
             <div className={styles.sectionMeta}>
               {activeTab === "orders" && <span className={styles.pill}>{pendingOrders.length} pending</span>}
-              {activeTab === "reviews" && <span className={styles.pill}>{pendingReviews.length} pending</span>}
               {activeTab === "approved" && (
                 <>
                   <span className={styles.pill}>{approvedOrders.length} approved</span>
@@ -345,7 +295,7 @@ function AdminDashboard() {
             </div>
           </div>
 
-          {/* Orders */}
+          {/* Pending Orders */}
           {activeTab === "orders" && (
             <div className={styles.card}>
               {loadingOrders
@@ -354,7 +304,7 @@ function AdminDashboard() {
             </div>
           )}
 
-          {/* Approved orders */}
+          {/* Approved Orders */}
           {activeTab === "approved" && (
             <div className={styles.card}>
               {loadingOrders
@@ -408,7 +358,14 @@ function AdminDashboard() {
               <button className={styles.addProductBtn} onClick={() => setShowAddForm((s) => !s)} type="button">
                 {showAddForm ? "Close Form" : "Add New Product"}
               </button>
-              <AddProduct showAddForm={showAddForm} setShowAddForm={setShowAddForm} newProduct={newProduct} setNewProduct={setNewProduct} handleAddProduct={handleAddProduct} setError={setError} />
+              <AddProduct
+                showAddForm={showAddForm}
+                setShowAddForm={setShowAddForm}
+                newProduct={newProduct}
+                setNewProduct={setNewProduct}
+                handleAddProduct={handleAddProduct}
+                setError={setError}
+              />
             </div>
           )}
 
@@ -422,45 +379,13 @@ function AdminDashboard() {
                   <div className={styles.updateTopRow}>
                     <button type="button" className={styles.backBtn} onClick={() => setActiveTab("products")}>← Back</button>
                   </div>
-                  <UpdateProduct product={selectedProduct} onCancel={() => setActiveTab("products")} onSubmit={handleUpdateProduct} setError={setError} />
+                  <UpdateProduct
+                    product={selectedProduct}
+                    onCancel={() => setActiveTab("products")}
+                    onSubmit={handleUpdateProduct}
+                    setError={setError}
+                  />
                 </>
-              )}
-            </div>
-          )}
-
-          {/* ── Reviews tab ── */}
-          {activeTab === "reviews" && (
-            <div className={styles.card}>
-              {reviewsLoading ? (
-                <div className={styles.emptyState}><div className={styles.emptyStateIcon}>⏳</div><h3>Loading reviews…</h3></div>
-              ) : reviews.length === 0 ? (
-                <div className={styles.emptyState}><div className={styles.emptyStateIcon}>💬</div><h3>No reviews yet</h3></div>
-              ) : (
-                <div className={styles.reviewsList}>
-                  {reviews.map((r) => (
-                    <div key={r.id} className={`${styles.reviewItem} ${r.approved ? styles.reviewApproved : styles.reviewPending}`}>
-                      <div className={styles.reviewMeta}>
-                        <span className={styles.reviewAuthor}>{r.user_name}</span>
-                        <span className={styles.reviewEmail}>{r.user_email}</span>
-                        <span className={styles.reviewRating}>{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</span>
-                        <span className={`${styles.reviewStatus} ${r.approved ? styles.reviewStatusApproved : styles.reviewStatusPending}`}>
-                          {r.approved ? "Approved" : "Pending"}
-                        </span>
-                      </div>
-                      <p className={styles.reviewText}>{r.text}</p>
-                      <div className={styles.reviewActions}>
-                        {!r.approved && (
-                          <button className={styles.updateBtn} onClick={() => approveReview(r.id)} type="button">
-                            ✅ Approve
-                          </button>
-                        )}
-                        <button className={styles.deleteBtn} onClick={() => deleteReview(r.id)} type="button">
-                          🗑 Delete
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               )}
             </div>
           )}
@@ -472,11 +397,10 @@ function AdminDashboard() {
             <div className={styles.sideTitle}>Navigation</div>
 
             {[
-              { key: "orders", label: "Pending Orders", count: pendingOrders.length },
-              { key: "approved", label: "Approved Orders", count: approvedOrders.length },
-              { key: "products", label: "Products", count: products.length },
-              { key: "addProduct", label: "Add Product", count: null },
-              { key: "reviews", label: "Reviews", count: pendingReviews.length },
+              { key: "orders",     label: "Pending Orders",  count: pendingOrders.length },
+              { key: "approved",   label: "Approved Orders", count: approvedOrders.length },
+              { key: "products",   label: "Products",        count: products.length },
+              { key: "addProduct", label: "Add Product",     count: null },
             ].map(({ key, label, count }) => (
               <button
                 key={key}
