@@ -60,7 +60,7 @@ const Home = () => {
       const data = await googleLogin(googleIdToken);
 
       if (data?.role === "admin") {
-        localStorage.setItem("adminToken", data.access_token);
+        localStorage.setItem("accessToken", data.access_token);
         localStorage.setItem("userData", JSON.stringify({ role: "admin", email: data.email }));
         window.google?.accounts?.id?.cancel();
         navigate("/admin/dashboard", { replace: true });
@@ -337,8 +337,7 @@ const Home = () => {
       <section id="about" className="pageSection">
         <About />
       </section>
-      <Blog />
-      <Testimonial />
+     
       <Footer />
     </>
   );
