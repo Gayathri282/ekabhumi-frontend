@@ -10,7 +10,6 @@ import { googleLogin, logout, hasSession } from "../api/authAPI";
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
-// ─── Google One Tap init ──────────────────────────────────────────────────────
 function initGoogleOneTap(callback) {
   if (!GOOGLE_CLIENT_ID || !window.google?.accounts?.id) return;
   window.google.accounts.id.initialize({
@@ -22,31 +21,27 @@ function initGoogleOneTap(callback) {
 }
 
 const Home = () => {
-  const [scrolled, setScrolled] = useState(false);
-  const [products, setProducts] = useState(() => {
-    try {
-      const cached = localStorage.getItem("cachedProducts");
-      return cached ? JSON.parse(cached) : [];
-    } catch { return []; }
-  });
+  const [scrolled, setScrolled]     = useState(false);
+  const [menuOpen, setMenuOpen]     = useState(false);
+  const [isMobile, setIsMobile]     = useState(window.innerWidth <= 992);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [showLoginDropdown, setShowLoginDropdown] = useState(false);
 
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 992);
+  const [products, setProducts] = useState(() => {
+    try { const c = localStorage.getItem("cachedProducts"); return c ? JSON.parse(c) : []; }
+    catch { return []; }
+  });
 
   // Auth
   const [isLoggedIn, setIsLoggedIn] = useState(() => hasSession());
-  const [userEmail, setUserEmail] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("userData") || "{}")?.email || ""; }
-    catch { return ""; }
+  const [userData, setUserData] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("userData") || "{}"); } catch { return {}; }
   });
-  const [loginLoading, setLoginLoading] = useState(false);
-  const [showLoginDropdown, setShowLoginDropdown] = useState(false);
+
   const loginDropdownRef = useRef(null);
-  const googleBtnRef = useRef(null);
+  const googleBtnRef     = useRef(null);
+  const navigate         = useNavigate();
 
-  const navigate = useNavigate();
-
-  // ── sorted products ──────────────────────────────────────────────────────────
   const sortedProducts = useMemo(() => {
     if (!Array.isArray(products)) return [];
     return [...products].sort((a, b) => {
@@ -59,7 +54,6 @@ const Home = () => {
 
   const closeMenu = () => setMenuOpen(false);
 
-  // ── Google credential handler ───────────────────────────────────────────────
   const handleCredential = useCallback(async (googleIdToken) => {
     setLoginLoading(true);
     try {
@@ -73,8 +67,16 @@ const Home = () => {
         return;
       }
 
+      // Store user data for navbar display
+      const user = {
+        email: data.email,
+        name:  data.name  || data.email?.split("@")[0] || "",
+        picture: data.picture || null,
+      };
+      localStorage.setItem("userData", JSON.stringify(user));
+
       setIsLoggedIn(true);
-      setUserEmail(data?.email || "");
+      setUserData(user);
       setShowLoginDropdown(false);
       window.google?.accounts?.id?.cancel();
     } catch (e) {
@@ -84,7 +86,7 @@ const Home = () => {
     }
   }, [navigate]);
 
-  // ── init Google script + One Tap ────────────────────────────────────────────
+  // Init Google script
   useEffect(() => {
     const init = () => initGoogleOneTap(handleCredential);
     if (window.google?.accounts?.id) { init(); return; }
@@ -100,28 +102,24 @@ const Home = () => {
     }
   }, [handleCredential]);
 
-  // ── render Google button when dropdown opens ────────────────────────────────
+  // Render Google button when dropdown opens
   useEffect(() => {
     if (!showLoginDropdown || isLoggedIn) return;
     if (!googleBtnRef.current || !window.google?.accounts?.id) return;
     const t = setTimeout(() => {
       window.google.accounts.id.renderButton(googleBtnRef.current, {
-        theme: "outline",
-        size: "large",
-        text: "signin_with",
-        width: 220,
+        theme: "outline", size: "large", text: "signin_with", width: 220,
       });
     }, 50);
     return () => clearTimeout(t);
   }, [showLoginDropdown, isLoggedIn]);
 
-  // ── close dropdown on outside click ────────────────────────────────────────
+  // Close dropdown on outside click
   useEffect(() => {
     if (!showLoginDropdown) return;
     const handler = (e) => {
-      if (loginDropdownRef.current && !loginDropdownRef.current.contains(e.target)) {
+      if (loginDropdownRef.current && !loginDropdownRef.current.contains(e.target))
         setShowLoginDropdown(false);
-      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -130,11 +128,10 @@ const Home = () => {
   const handleLogout = () => {
     logout();
     setIsLoggedIn(false);
-    setUserEmail("");
+    setUserData({});
     setShowLoginDropdown(false);
   };
 
-  // ── resize ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     const onResize = () => {
       setIsMobile(window.innerWidth <= 992);
@@ -144,7 +141,6 @@ const Home = () => {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // ── lock body scroll when mobile menu open ──────────────────────────────────
   useEffect(() => {
     if (!menuOpen) return;
     const prev = document.body.style.overflow;
@@ -152,7 +148,6 @@ const Home = () => {
     return () => { document.body.style.overflow = prev; };
   }, [menuOpen]);
 
-  // ── fetch products ──────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
     try {
       const data = await fetchProducts();
@@ -166,56 +161,50 @@ const Home = () => {
 
   useEffect(() => {
     loadData();
-    const syncProducts = (e) => { if (e.key === "productsUpdated") loadData(); };
-    window.addEventListener("storage", syncProducts);
-    const onFocus = () => loadData();
-    window.addEventListener("focus", onFocus);
-    return () => {
-      window.removeEventListener("storage", syncProducts);
-      window.removeEventListener("focus", onFocus);
-    };
+    const sync = (e) => { if (e.key === "productsUpdated") loadData(); };
+    window.addEventListener("storage", sync);
+    window.addEventListener("focus", loadData);
+    return () => { window.removeEventListener("storage", sync); window.removeEventListener("focus", loadData); };
   }, [loadData]);
 
-  // ── scroll ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const handleLogoError = (e) => {
-    e.target.onerror = null;
-    e.target.src = "/images/logo-placeholder.png";
-  };
+  const handleLogoError = (e) => { e.target.onerror = null; e.target.src = "/images/logo-placeholder.png"; };
 
-  // ── Shop Now → priority 1 product detail page ───────────────────────────────
   const goToPriorityOneProduct = () => {
-    const priorityOne = sortedProducts.find((p) => Number(p.priority) === 1);
-    const top = priorityOne || sortedProducts[0];
-    if (top?.id) {
-      navigate(`/products/${top.id}`);
-    }
+    const top = sortedProducts.find((p) => Number(p.priority) === 1) || sortedProducts[0];
+    if (top?.id) navigate(`/products/${top.id}`);
   };
 
-  // ── auth button (desktop) ───────────────────────────────────────────────────
+  // ── User display helpers ────────────────────────────────
+  const userEmail   = userData?.email || "";
+  const userName    = userData?.name  || userEmail.split("@")[0] || "";
+  const userPicture = userData?.picture || null;
+  const userInitial = (userName[0] || userEmail[0] || "U").toUpperCase();
+
+  // ── Avatar (used in both desktop + mobile) ──────────────
+  const Avatar = () => (
+    userPicture
+      ? <img src={userPicture} alt={userName} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} onError={(e) => {
+  e.currentTarget.style.display = "none";
+}} />
+      : <span style={{ fontWeight: 800, fontSize: 15 }}>{userInitial}</span>
+  );
+
+  // ── Desktop Auth Button ─────────────────────────────────
   const AuthButton = () => (
     <div className="auth-wrap" ref={loginDropdownRef}>
       {isLoggedIn ? (
-        <button
-          className="nav-auth-btn"
-          onClick={() => setShowLoginDropdown((v) => !v)}
-          title={userEmail}
-        >
-          <span className="nav-avatar">
-            {(userEmail?.[0] || "U").toUpperCase()}
-          </span>
+        <button className="nav-auth-btn" onClick={() => setShowLoginDropdown(v => !v)} title={userEmail}
+          style={{ width: 38, height: 38, borderRadius: "50%", padding: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: userPicture ? "transparent" : "#F26722", color: "#fff", border: userPicture ? "2px solid #F26722" : "none" }}>
+          <Avatar />
         </button>
       ) : (
-        <button
-          className="nav-auth-btn nav-auth-btn--login"
-          onClick={() => setShowLoginDropdown((v) => !v)}
-          disabled={loginLoading}
-        >
+        <button className="nav-auth-btn nav-auth-btn--login" onClick={() => setShowLoginDropdown(v => !v)} disabled={loginLoading}>
           {loginLoading ? "Signing in…" : "Sign In"}
         </button>
       )}
@@ -224,11 +213,17 @@ const Home = () => {
         <div className="auth-dropdown">
           {isLoggedIn ? (
             <>
-              <div className="auth-dropdown-email">{userEmail}</div>
-              <button
-                className="auth-dropdown-item"
-                onClick={() => { setShowLoginDropdown(false); navigate("/track-order"); }}
-              >
+              {/* User info */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderBottom: "1px solid #f0ebe4" }}>
+                <div style={{ width: 36, height: 36, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "#F26722", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 15 }}>
+                  <Avatar />
+                </div>
+                <div>
+                  {userName && <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>{userName}</div>}
+                  <div style={{ fontSize: 12, color: "#999" }}>{userEmail}</div>
+                </div>
+              </div>
+              <button className="auth-dropdown-item" onClick={() => { setShowLoginDropdown(false); navigate("/account"); }}>
                 My Orders
               </button>
               <button className="auth-dropdown-item auth-dropdown-item--danger" onClick={handleLogout}>
@@ -247,13 +242,7 @@ const Home = () => {
   );
 
   const MobileRightButton = () => (
-    <button
-      className="hamburger mobile-only"
-      type="button"
-      onClick={() => setMenuOpen((v) => !v)}
-      aria-label="Menu"
-      aria-expanded={menuOpen}
-    >
+    <button className="hamburger mobile-only" type="button" onClick={() => setMenuOpen(v => !v)} aria-label="Menu" aria-expanded={menuOpen}>
       <span /><span /><span />
     </button>
   );
@@ -262,11 +251,10 @@ const Home = () => {
     <>
       <nav className={`navbar ${scrolled ? "scrolled" : ""}`}>
         <div className="logo">
-          {!scrolled ? (
-            <img src="/images/logo.png" alt="Eka Bhumi" className="logo-img" onError={handleLogoError} />
-          ) : (
-            <span className="text-logo">EKABHUMI</span>
-          )}
+          {!scrolled
+            ? <img src="/images/logo.png" alt="Eka Bhumi" className="logo-img" onError={handleLogoError} />
+            : <span className="text-logo">EKABHUMI</span>
+          }
         </div>
 
         <div className="nav-links desktop-only">
@@ -274,7 +262,6 @@ const Home = () => {
           <a href="#about">About</a>
         </div>
 
-        {/* Desktop auth */}
         <div className="desktop-only">
           <AuthButton />
         </div>
@@ -285,7 +272,7 @@ const Home = () => {
       {/* Mobile menu */}
       {menuOpen && (
         <div className="mobileMenuOverlay" onMouseDown={closeMenu}>
-          <div className="mobileMenuPanel" onMouseDown={(e) => e.stopPropagation()}>
+          <div className="mobileMenuPanel" onMouseDown={e => e.stopPropagation()}>
             <div className="mobileMenuHeader">
               <button type="button" className="mobileMenuBack" onClick={closeMenu} aria-label="Back">←</button>
               <div className="mobileMenuTitle">Menu</div>
@@ -293,6 +280,19 @@ const Home = () => {
             </div>
 
             <div className="mobileMenuSection">
+              {/* User card in mobile menu */}
+              {isLoggedIn && (
+                <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "#fff7f2", borderRadius: 14, marginBottom: 12 }}>
+                  <div style={{ width: 42, height: 42, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "#F26722", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 17 }}>
+                    <Avatar />
+                  </div>
+                  <div>
+                    {userName && <div style={{ fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>{userName}</div>}
+                    <div style={{ fontSize: 12, color: "#999" }}>{userEmail}</div>
+                  </div>
+                </div>
+              )}
+
               <a className="mobileMenuItem" href="#home" onClick={closeMenu}>Home</a>
               <a className="mobileMenuItem" href="#about" onClick={closeMenu}>About</a>
 
@@ -300,11 +300,7 @@ const Home = () => {
 
               {isLoggedIn ? (
                 <>
-                  <div className="mobileMenuEmail">{userEmail}</div>
-                  <button
-                    className="mobileMenuItem"
-                    onClick={() => { closeMenu(); navigate("/track-order"); }}
-                  >
+                  <button className="mobileMenuItem" onClick={() => { closeMenu(); navigate("/account"); }}>
                     My Orders
                   </button>
                   <button className="mobileMenuItem mobileMenuItem--danger" onClick={() => { handleLogout(); closeMenu(); }}>
@@ -314,14 +310,10 @@ const Home = () => {
               ) : (
                 <div className="mobileMenuGoogleWrap">
                   <p className="mobileMenuLoginHint">Sign in to track your orders</p>
-                  <div
-                    ref={(el) => {
-                      if (!el || !window.google?.accounts?.id || isLoggedIn) return;
-                      window.google.accounts.id.renderButton(el, {
-                        theme: "outline", size: "large", text: "signin_with", width: 220,
-                      });
-                    }}
-                  />
+                  <div ref={el => {
+                    if (!el || !window.google?.accounts?.id || isLoggedIn) return;
+                    window.google.accounts.id.renderButton(el, { theme: "outline", size: "large", text: "signin_with", width: 220 });
+                  }} />
                 </div>
               )}
             </div>
@@ -329,7 +321,7 @@ const Home = () => {
         </div>
       )}
 
-      {/* HERO — full page, Shop Now goes directly to product detail */}
+      {/* HERO */}
       <section id="home" className="hero" style={{ backgroundImage: "url(/images/hero-mobile.png)" }}>
         <div className="hero-cta desktop-only">
           <button className="primary-btn" onClick={goToPriorityOneProduct}>Shop Now</button>
@@ -342,12 +334,11 @@ const Home = () => {
         </div>
       </section>
 
-      {/* No products carousel section — Shop Now goes straight to product detail */}
-
       <section id="about" className="pageSection">
         <About />
       </section>
-     
+      <Blog />
+      <Testimonial />
       <Footer />
     </>
   );

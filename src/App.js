@@ -7,7 +7,9 @@ import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-import TrackOrder from "./pages/TrackOrder";
+
+import Account from "./pages/Account";            // ← added
+
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsAndConditions from "./pages/TermsAndConditions";
 import RefundAndCancellation from "./pages/RefundAndCancellation";
@@ -21,8 +23,8 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/products/:id" element={<ProductDetails />} />
 
-       <Route path="/track-order/:orderId" element={<TrackOrder />} />
-<Route path="/track-order" element={<TrackOrder />} />
+      
+        <Route path="/account" element={<Account />} />   {/* ← added */}
 
         {/* -------------------- POLICIES ------------------ */}
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />

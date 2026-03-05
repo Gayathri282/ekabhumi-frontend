@@ -217,7 +217,7 @@ const ProductDetails = () => {
         quantity={quantity}
         onSuccess={() => {
           setShowBuy(false);
-          navigate("/");
+          navigate("/account");
         }}
       />
     </div>

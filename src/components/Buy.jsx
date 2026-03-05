@@ -10,10 +10,8 @@ const getShippingCharge = (pincode) => {
   const prefix = pincode.substring(0, 2);
   const firstDigit = pincode[0];
 
-  // Kerala: 67, 68, 69
   if (["67", "68", "69"].includes(prefix)) return 50;
 
-  // South: AP/Telangana (50-53), Karnataka (56-59), TN (60-64)
   const southPrefixes = [
     "50", "51", "52", "53",
     "56", "57", "58", "59",
@@ -21,7 +19,6 @@ const getShippingCharge = (pincode) => {
   ];
   if (southPrefixes.includes(prefix)) return 80;
 
-  // Rest of India (estimate)
   switch (firstDigit) {
     case "1":
     case "2":
@@ -37,15 +34,10 @@ const getShippingCharge = (pincode) => {
   }
 };
 
-// No `user` prop needed anymore — guest checkout only
 const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
   const [orderLoading, setOrderLoading] = useState(false);
-
-  // server total (after /orders create)
-  const [serverTotal, setServerTotal] = useState(null);
-
-  // prevent double verify
-  const verifiedRef = useRef(false);
+  const [serverTotal, setServerTotal]   = useState(null);
+  const verifiedRef                     = useRef(false);
 
   const [orderForm, setOrderForm] = useState({
     fullName: "",
@@ -58,13 +50,11 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
     notes: "",
   });
 
-  // UI estimate only
   const deliveryFeeEstimate = useMemo(
     () => getShippingCharge(orderForm.pincode),
     [orderForm.pincode]
   );
 
-  // UI estimate only
   const totalPriceEstimate = useMemo(() => {
     if (!product) return 0;
     const base = Number(product.price || 0) * Number(quantity || 1);
@@ -73,10 +63,8 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
 
   useEffect(() => {
     if (!open) return;
-    // reset state each open
     setServerTotal(null);
     verifiedRef.current = false;
-    // No user pre-fill — guest checkout, form always starts empty
     setOrderForm({
       fullName: "",
       phoneNumber: "",
@@ -93,9 +81,7 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
     if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
+    return () => { document.body.style.overflow = prev; };
   }, [open]);
 
   const safeClose = useCallback(() => {
@@ -105,9 +91,7 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e) => {
-      if (e.key === "Escape" && !orderLoading) safeClose();
-    };
+    const onKey = (e) => { if (e.key === "Escape" && !orderLoading) safeClose(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, orderLoading, safeClose]);
@@ -121,18 +105,13 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
 
   const validateForm = () => {
     const { fullName, phoneNumber, email, address, city, state, pincode } = orderForm;
-
-    if (!fullName.trim()) return alert("Please enter your full name"), false;
-    if (!phoneNumber.trim() || !/^\d{10}$/.test(phoneNumber))
-      return alert("Please enter a valid 10-digit phone number"), false;
-    if (!email.trim() || !/\S+@\S+\.\S+/.test(email))
-      return alert("Please enter a valid email address"), false;
-    if (!address.trim()) return alert("Please enter your delivery address"), false;
-    if (!city.trim()) return alert("Please enter your city"), false;
-    if (!state.trim()) return alert("Please enter your state"), false;
-    if (!pincode.trim() || !/^\d{6}$/.test(pincode))
-      return alert("Please enter a valid 6-digit pincode"), false;
-
+    if (!fullName.trim())                                      return alert("Please enter your full name"), false;
+    if (!phoneNumber.trim() || !/^\d{10}$/.test(phoneNumber)) return alert("Please enter a valid 10-digit phone number"), false;
+    if (!email.trim() || !/\S+@\S+\.\S+/.test(email))         return alert("Please enter a valid email address"), false;
+    if (!address.trim())                                       return alert("Please enter your delivery address"), false;
+    if (!city.trim())                                          return alert("Please enter your city"), false;
+    if (!state.trim())                                         return alert("Please enter your state"), false;
+    if (!pincode.trim() || !/^\d{6}$/.test(pincode))           return alert("Please enter a valid 6-digit pincode"), false;
     return true;
   };
 
@@ -151,7 +130,6 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
     verifiedRef.current = false;
 
     try {
-      // Guest order payload — no user_id or auth token
       const orderPayload = {
         product_id: product.id,
         quantity: Number(quantity || 1),
@@ -163,28 +141,26 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
         notes: orderForm.notes || null,
       };
 
-      // 1) Create DB order -> { order, public_token }
+      // 1) Create DB order
       const created = await createOrder(orderPayload);
 
-      const orderObj = created?.order;
-      const dbOrderId = orderObj?.id;
+      const orderObj    = created?.order;
+      const dbOrderId   = orderObj?.id;
       const publicToken = created?.public_token;
 
       if (!dbOrderId || !publicToken) {
         throw new Error("Order creation failed (missing id/token).");
       }
 
-      // store token so customer can track later (guest)
+      // Store token for guest tracking in /account
       localStorage.setItem(`order_token_${dbOrderId}`, publicToken);
       localStorage.setItem("last_order_id", String(dbOrderId));
 
       const total = Number(orderObj?.total_amount || 0);
-      if (!total || total <= 0) {
-        throw new Error("Invalid server total. Please try again.");
-      }
+      if (!total || total <= 0) throw new Error("Invalid server total. Please try again.");
       setServerTotal(total);
 
-      // 2) Create Razorpay order (server uses DB order total)
+      // 2) Create Razorpay order
       const rp = await createRazorpayOrder({
         order_id: dbOrderId,
         email: orderForm.email,
@@ -198,9 +174,9 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
       // 3) Open Razorpay Checkout
       const options = {
         key: rp.keyId,
-        amount: rp.amount, // paise (from backend)
+        amount: rp.amount,
         currency: rp.currency || "INR",
-        name: "ELVORA",
+        name: "Ekabhumi",
         description: `Order #${dbOrderId}`,
         order_id: rp.razorpayOrderId,
         prefill: {
@@ -220,7 +196,7 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
               razorpay_signature: response.razorpay_signature,
             });
 
-            alert("✅ Payment successful! Order placed.");
+            // Redirect to /account — order will be visible there
             onSuccess?.();
             safeClose();
           } catch (e) {
@@ -230,21 +206,22 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
         },
         modal: {
           ondismiss: () => {
-            alert("Payment cancelled.");
+            // user closed Razorpay — stay on page, do nothing
           },
         },
-        theme: { color: "#111111" },
+        theme: { color: "#F26722" },
       };
 
       const rzp = new window.Razorpay(options);
       rzp.on("payment.failed", (resp) => {
         console.error(resp);
-        alert("❌ Payment failed.");
+        alert("❌ Payment failed. Please try again.");
       });
       rzp.open();
+
     } catch (err) {
       console.error(err);
-      alert(err?.message || "Failed. Please try again.");
+      alert(err?.message || "Something went wrong. Please try again.");
     } finally {
       setOrderLoading(false);
     }
@@ -253,14 +230,13 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
   return (
     <div className="buy-overlay" onMouseDown={safeClose}>
       <div className="buy-modal" onMouseDown={(e) => e.stopPropagation()}>
+
         <div className="buy-head">
           <div>
             <h2 className="buy-title">Complete Your Order</h2>
             <p className="buy-sub">Secure Checkout • Doorstep Delivery</p>
           </div>
-          <button className="buy-close" onClick={safeClose}>
-            ×
-          </button>
+          <button className="buy-close" onClick={safeClose}>×</button>
         </div>
 
         <div className="buy-body">
@@ -268,12 +244,8 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
             <h3>Order Summary</h3>
 
             <div className="buy-row">
-              <span>
-                {product?.name} (x{quantity})
-              </span>
-              <span>
-                ₹{(Number(product?.price || 0) * Number(quantity || 1)).toFixed(2)}
-              </span>
+              <span>{product?.name} (x{quantity})</span>
+              <span>₹{(Number(product?.price || 0) * Number(quantity || 1)).toFixed(2)}</span>
             </div>
 
             <div className="buy-row">
@@ -310,16 +282,9 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
                 <label>Full Name *</label>
                 <input name="fullName" value={orderForm.fullName} onChange={handleFormChange} />
               </div>
-
               <div className="buy-field">
                 <label>Phone Number *</label>
-                <input
-                  name="phoneNumber"
-                  value={orderForm.phoneNumber}
-                  onChange={handleFormChange}
-                  maxLength={10}
-                  inputMode="numeric"
-                />
+                <input name="phoneNumber" value={orderForm.phoneNumber} onChange={handleFormChange} maxLength={10} inputMode="numeric" />
               </div>
             </div>
 
@@ -338,21 +303,13 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
                 <label>City *</label>
                 <input name="city" value={orderForm.city} onChange={handleFormChange} />
               </div>
-
               <div className="buy-field">
                 <label>State *</label>
                 <input name="state" value={orderForm.state} onChange={handleFormChange} />
               </div>
-
               <div className="buy-field">
                 <label>Pincode *</label>
-                <input
-                  name="pincode"
-                  value={orderForm.pincode}
-                  onChange={handleFormChange}
-                  maxLength={6}
-                  inputMode="numeric"
-                />
+                <input name="pincode" value={orderForm.pincode} onChange={handleFormChange} maxLength={6} inputMode="numeric" />
               </div>
             </div>
 
@@ -367,7 +324,6 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
           <button className="buy-btn buy-outline" onClick={safeClose} disabled={orderLoading}>
             Cancel
           </button>
-
           <button className="buy-btn buy-primary" onClick={handleSubmit} disabled={orderLoading}>
             {orderLoading
               ? "Processing..."
@@ -376,6 +332,7 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
               : "Proceed to Pay"}
           </button>
         </div>
+
       </div>
     </div>
   );

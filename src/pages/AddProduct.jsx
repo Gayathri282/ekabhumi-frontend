@@ -12,6 +12,8 @@ function AddProduct({
 
   const update = (patch) => setNewProduct({ ...newProduct, ...patch });
 
+  const isFeatured = String(newProduct.priority) === "1";
+
   return (
     <div className="addFormContainer">
       <h3>Add New Product</h3>
@@ -56,18 +58,21 @@ function AddProduct({
         </div>
 
         <div className="grid2">
+          {/* Priority toggle */}
           <div className="formGroup">
-            <label>Priority (1 = highest) *</label>
-            <input
-              type="number"
-              name="priority"
-              placeholder="Enter priority"
-              value={newProduct.priority ?? "1"}
-              onChange={(e) => update({ priority: e.target.value })}
-              required
-              min="1"
-              step="1"
-            />
+            <label>Featured Product</label>
+            <div
+              className="toggleRow"
+              onClick={() => update({ priority: isFeatured ? "2" : "1" })}
+            >
+              <div className={`toggle ${isFeatured ? "toggle--on" : ""}`}>
+                <div className="toggleThumb" />
+              </div>
+              <span className="toggleLabel">
+                {isFeatured ? "Yes — shown first (priority 1)" : "No — normal priority"}
+              </span>
+            </div>
+            <input type="hidden" name="priority" value={isFeatured ? "1" : "2"} />
           </div>
 
           <div className="formGroup">
@@ -78,7 +83,6 @@ function AddProduct({
               placeholder="Enter quantity (0 = Available Soon)"
               value={newProduct.quantity ?? "0"}
               onChange={(e) => {
-                // keep it as string for FormData, but clamp to >= 0
                 const v = e.target.value;
                 if (v === "") return update({ quantity: "" });
                 const n = Math.max(0, parseInt(v, 10) || 0);
@@ -115,14 +119,10 @@ function AddProduct({
           <button type="submit" className="submitBtn">
             Add Product
           </button>
-
           <button
             type="button"
             className="cancelBtn"
-            onClick={() => {
-              setShowAddForm(false);
-              setError("");
-            }}
+            onClick={() => { setShowAddForm(false); setError(""); }}
           >
             Cancel
           </button>

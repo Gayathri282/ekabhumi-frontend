@@ -1,414 +1,371 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchMyOrders, fetchOrderByToken } from "../api/publicAPI";
-import "./Account.css";
 
-function money(n) {
-  return Number(n || 0).toFixed(2);
-}
+/* ── helpers ─────────────────────────────────────────── */
+const fmt = (n) => Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 });
 
-function isAdminApproved(status) {
-  const s = String(status || "").toLowerCase();
-  return ["confirmed", "approved", "shipped", "out_for_delivery", "delivered"].includes(s);
-}
+const STATUS_META = {
+  pending:          { label: "Pending",          color: "#f59e0b", bg: "rgba(245,158,11,0.1)"  },
+  confirmed:        { label: "Confirmed",         color: "#10b981", bg: "rgba(16,185,129,0.1)" },
+  approved:         { label: "Approved",          color: "#10b981", bg: "rgba(16,185,129,0.1)" },
+  shipped:          { label: "Shipped",           color: "#3b82f6", bg: "rgba(59,130,246,0.1)" },
+  out_for_delivery: { label: "Out for Delivery",  color: "#8b5cf6", bg: "rgba(139,92,246,0.1)" },
+  delivered:        { label: "Delivered",         color: "#22c55e", bg: "rgba(34,197,94,0.1)"  },
+  failed:           { label: "Failed",            color: "#ef4444", bg: "rgba(239,68,68,0.1)"  },
+};
 
-function getGuestOrderTokens() {
-  // Finds keys like: order_token_123 -> tokenValue
+const getStatus = (s) => STATUS_META[String(s || "").toLowerCase()] || { label: s || "—", color: "#888", bg: "#f5f5f5" };
+
+const STEPS = ["confirmed", "shipped", "out_for_delivery", "delivered"];
+const stepIndex = (s) => STEPS.indexOf(String(s || "").toLowerCase());
+
+function getGuestTokens() {
   const result = [];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
-    if (!k) continue;
-    if (!k.startsWith("order_token_")) continue;
-
-    const idPart = k.replace("order_token_", "");
-    const orderId = Number(idPart);
+    if (!k?.startsWith("order_token_")) continue;
+    const id = Number(k.replace("order_token_", ""));
     const token = localStorage.getItem(k);
-
-    if (!Number.isFinite(orderId) || orderId <= 0) continue;
-    if (!token || token.length < 10) continue;
-
-    result.push({ orderId, token, storageKey: k });
+    if (!Number.isFinite(id) || id <= 0 || !token) continue;
+    result.push({ orderId: id, token, key: k });
   }
-  // latest first
-  result.sort((a, b) => b.orderId - a.orderId);
-  return result;
+  return result.sort((a, b) => b.orderId - a.orderId);
 }
 
-export default function Account() {
-  const navigate = useNavigate();
-  const [tab, setTab] = useState("orders"); // "orders" | "cart"
-
-  // Auth
-  const token = localStorage.getItem("accessToken");
-  const role = localStorage.getItem("role") || "guest";
-
-  // Orders (logged-in)
-  const [myOrders, setMyOrders] = useState([]);
-  const [myOrdersLoading, setMyOrdersLoading] = useState(false);
-  const [myOrdersError, setMyOrdersError] = useState("");
-
-  // Orders (guest tracking)
-  const [guestOrders, setGuestOrders] = useState([]);
-  const [guestLoading, setGuestLoading] = useState(false);
-  const [guestError, setGuestError] = useState("");
-
-  // Shared order modal
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
-
-  // Cart (simple localStorage cart)
-  const [cart, setCart] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("cart") || "[]");
-    } catch {
-      return [];
-    }
-  });
-
-  const handleLogout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("role");
-    navigate("/", { replace: true });
-  };
-
-  // Load my orders when logged in
-  useEffect(() => {
-    if (!token) {
-      setMyOrders([]);
-      setMyOrdersError("");
-      return;
-    }
-
-    (async () => {
-      try {
-        setMyOrdersLoading(true);
-        setMyOrdersError("");
-        const data = await fetchMyOrders();
-        setMyOrders(Array.isArray(data) ? data : []);
-      } catch (e) {
-        // If JWT expired, you can auto-logout (optional)
-        setMyOrdersError(e?.message || "Failed to load your orders");
-      } finally {
-        setMyOrdersLoading(false);
-      }
-    })();
-  }, [token]);
-
-  // Load guest tracked orders (always try)
-  useEffect(() => {
-    const tokens = getGuestOrderTokens();
-    if (tokens.length === 0) {
-      setGuestOrders([]);
-      setGuestError("");
-      return;
-    }
-
-    (async () => {
-      try {
-        setGuestLoading(true);
-        setGuestError("");
-
-        // fetch all guest orders (in parallel)
-        const results = await Promise.allSettled(
-          tokens.map(({ orderId, token }) => fetchOrderByToken(orderId, token))
-        );
-
-        const ok = [];
-        const badKeys = [];
-
-        results.forEach((r, idx) => {
-          const meta = tokens[idx];
-          if (r.status === "fulfilled") {
-            ok.push(r.value);
-          } else {
-            // token might be wrong/expired, remove it so it doesn't keep failing forever
-            badKeys.push(meta.storageKey);
-          }
-        });
-
-        // remove invalid tokens silently (optional but practical)
-        badKeys.forEach((k) => localStorage.removeItem(k));
-
-        // latest first (by id)
-        ok.sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
-        setGuestOrders(ok);
-      } catch (e) {
-        setGuestError(e?.message || "Failed to load tracked orders");
-      } finally {
-        setGuestLoading(false);
-      }
-    })();
-  }, []);
-
-  // Close modal on ESC
-  useEffect(() => {
-    function onKeyDown(e) {
-      if (e.key === "Escape") setIsOrderModalOpen(false);
-    }
-    if (isOrderModalOpen) window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isOrderModalOpen]);
-
-  // Cart helpers
-  function saveCart(next) {
-    setCart(next);
-    localStorage.setItem("cart", JSON.stringify(next));
-  }
-
-  function updateQty(id, qty) {
-    const q = Math.max(1, Number(qty || 1));
-    saveCart(cart.map((x) => (x.id === id ? { ...x, qty: q } : x)));
-  }
-
-  function removeItem(id) {
-    saveCart(cart.filter((x) => x.id !== id));
-  }
-
-  const cartSubtotal = useMemo(
-    () => cart.reduce((sum, it) => sum + Number(it.price || 0) * Number(it.qty || 1), 0),
-    [cart]
+/* ── Status Badge ────────────────────────────────────── */
+function StatusBadge({ status }) {
+  const m = getStatus(status);
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 5,
+      padding: "4px 12px", borderRadius: 99, fontSize: 12, fontWeight: 700,
+      color: m.color, background: m.bg, letterSpacing: 0.3,
+    }}>
+      <span style={{ width: 6, height: 6, borderRadius: "50%", background: m.color, display: "inline-block" }} />
+      {m.label}
+    </span>
   );
+}
 
-  function openOrder(o) {
-    setSelectedOrder(o);
-    setIsOrderModalOpen(true);
-  }
+/* ── Progress Tracker ────────────────────────────────── */
+function OrderProgress({ status }) {
+  const cur = stepIndex(status);
+  if (cur < 0) return null;
+  return (
+    <div style={{ margin: "20px 0", padding: "18px 20px", background: "rgba(242,103,34,0.04)", borderRadius: 14, border: "1px solid rgba(242,103,34,0.1)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+        {STEPS.map((step, i) => {
+          const done = i <= cur;
+          const active = i === cur;
+          const meta = STATUS_META[step];
+          return (
+            <React.Fragment key={step}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: i < STEPS.length - 1 ? "none" : 1, minWidth: 60 }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
+                  background: done ? "#F26722" : "#eee",
+                  color: done ? "#fff" : "#bbb",
+                  fontSize: 13, fontWeight: 800,
+                  boxShadow: active ? "0 0 0 4px rgba(242,103,34,0.2)" : "none",
+                  transition: "all 0.3s",
+                }}>
+                  {done ? "✓" : i + 1}
+                </div>
+                <span style={{ fontSize: 10, marginTop: 5, color: done ? "#F26722" : "#bbb", fontWeight: done ? 700 : 400, textAlign: "center", whiteSpace: "nowrap" }}>
+                  {meta.label}
+                </span>
+              </div>
+              {i < STEPS.length - 1 && (
+                <div style={{ flex: 1, height: 2, background: i < cur ? "#F26722" : "#eee", margin: "0 2px", marginBottom: 18, transition: "background 0.3s" }} />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
-  function closeModal() {
-    setIsOrderModalOpen(false);
-  }
+/* ── Order Card ──────────────────────────────────────── */
+function OrderCard({ order, onClick }) {
+  const s = getStatus(order.status);
+  return (
+    <button onClick={onClick} style={{
+      width: "100%", textAlign: "left", background: "#fff", border: "1px solid #f0ede8",
+      borderRadius: 18, padding: "20px 22px", cursor: "pointer",
+      transition: "all 0.22s cubic-bezier(.4,0,.2,1)",
+      display: "flex", gap: 16, alignItems: "flex-start",
+      boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+    }}
+    onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(242,103,34,0.12)"; e.currentTarget.style.borderColor = "#F26722"; }}
+    onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.04)"; e.currentTarget.style.borderColor = "#f0ede8"; }}
+    >
+      {/* Product image */}
+      <div style={{ width: 70, height: 70, borderRadius: 12, overflow: "hidden", flexShrink: 0, background: "#faf7f4" }}>
+        {order.product_image_url
+          ? <img src={order.product_image_url} alt={order.product_name} style={{ width: "100%", height: "100%", objectFit: "cover" }}onError={(e) => {
+  e.currentTarget.src = "https://placehold.co/70x70/f5ede4/F26722?text=📦";
+}} />
+          : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>📦</div>
+        }
+      </div>
 
-  const approved = isAdminApproved(selectedOrder?.status);
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 15, color: "#1a1a1a", marginBottom: 2 }}>{order.product_name}</div>
+            <div style={{ fontSize: 12, color: "#999" }}>Order #{order.id} · {order.order_date ? new Date(order.order_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—"}</div>
+          </div>
+          <StatusBadge status={order.status} />
+        </div>
+        <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ fontSize: 13, color: "#888" }}>Qty: {order.quantity}</span>
+          <span style={{ fontWeight: 800, fontSize: 16, color: "#F26722" }}>₹{fmt(order.total_amount)}</span>
+        </div>
+      </div>
+    </button>
+  );
+}
 
-  // Combine display: show my orders first, then guest orders not already included
-  const displayedOrders = useMemo(() => {
-    const a = Array.isArray(myOrders) ? myOrders : [];
-    const b = Array.isArray(guestOrders) ? guestOrders : [];
-    const seen = new Set(a.map((x) => String(x?.id)));
-    const uniqueGuest = b.filter((x) => !seen.has(String(x?.id)));
-    return [...a, ...uniqueGuest];
-  }, [myOrders, guestOrders]);
+/* ── Order Detail Modal ──────────────────────────────── */
+function OrderModal({ order, onClose }) {
+  useEffect(() => {
+    const h = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose]);
 
-  const ordersLoading = myOrdersLoading || guestLoading;
-  const ordersError = myOrdersError || guestError;
+  if (!order) return null;
 
   return (
-    <div className="account-wrap">
-      <div className="account-header">
-        <div>
-          <h2>Orders & Tracking</h2>
-          <div className="muted">
-            {token ? (
-              <>
-                Logged in • Role: <b>{role}</b>
-              </>
-            ) : (
-              <>
-                Guest mode • Showing orders placed on this device (tracking tokens)
-              </>
-            )}
+    <div onClick={onClose} style={{
+      position: "fixed", inset: 0, background: "rgba(15,10,5,0.65)", backdropFilter: "blur(10px)",
+      zIndex: 3000, display: "flex", alignItems: "flex-end", justifyContent: "center",
+      padding: "0",
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: "#fff", width: "100%", maxWidth: 560, borderRadius: "28px 28px 0 0",
+        padding: "32px 28px 40px", maxHeight: "90vh", overflowY: "auto",
+        animation: "slideUp 0.35s cubic-bezier(.4,0,.2,1)",
+      }}>
+        {/* Handle bar */}
+        <div style={{ width: 40, height: 4, background: "#e8e0d8", borderRadius: 2, margin: "0 auto 24px" }} />
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+          <div>
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a1a1a", margin: 0 }}>Order #{order.id}</h2>
+            <p style={{ margin: "4px 0 0", fontSize: 13, color: "#999" }}>
+              {order.order_date ? new Date(order.order_date).toLocaleString("en-IN") : "—"}
+            </p>
+          </div>
+          <button onClick={onClose} style={{ background: "#f5f0eb", border: "none", borderRadius: 10, width: 36, height: 36, cursor: "pointer", fontSize: 18, color: "#666", display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+        </div>
+
+        {/* Product */}
+        <div style={{ display: "flex", gap: 14, padding: 16, background: "#faf7f4", borderRadius: 16, marginBottom: 20 }}>
+          <div style={{ width: 64, height: 64, borderRadius: 10, overflow: "hidden", flexShrink: 0 }}>
+            {order.product_image_url
+              ? <img src={order.product_image_url} alt={order.product_name} style={{ width: "100%", height: "100%", objectFit: "cover" }}onError={(e) => {
+  e.currentTarget.src = "https://placehold.co/70x70/f5ede4/F26722?text=📦";
+}} />
+              : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>📦</div>
+            }
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, fontSize: 16, color: "#1a1a1a" }}>{order.product_name}</div>
+            <div style={{ fontSize: 13, color: "#888", marginTop: 3 }}>₹{fmt(order.unit_price)} × {order.quantity}</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: "#F26722", marginTop: 4 }}>₹{fmt(order.total_amount)}</div>
           </div>
         </div>
 
-        <div className="account-actions">
-          <div className="tabs">
-            <button className={tab === "orders" ? "active" : ""} onClick={() => setTab("orders")}>
-              Orders
-            </button>
-            <button className={tab === "cart" ? "active" : ""} onClick={() => setTab("cart")}>
-              Cart
+        {/* Status + Progress */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <span style={{ fontWeight: 700, fontSize: 14, color: "#555" }}>Order Status</span>
+          <StatusBadge status={order.status} />
+        </div>
+        <OrderProgress status={order.status} />
+
+        {/* Payment */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+          <div style={{ flex: 1, padding: "14px 16px", background: "#faf7f4", borderRadius: 12 }}>
+            <div style={{ fontSize: 11, color: "#999", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>Payment</div>
+            <div style={{ fontWeight: 700, fontSize: 14, marginTop: 4, color: order.payment_status === "paid" ? "#10b981" : "#f59e0b" }}>
+              {order.payment_status === "paid" ? "✓ Paid" : order.payment_status}
+            </div>
+          </div>
+          <div style={{ flex: 1, padding: "14px 16px", background: "#faf7f4", borderRadius: 12 }}>
+            <div style={{ fontSize: 11, color: "#999", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>Total</div>
+            <div style={{ fontWeight: 800, fontSize: 16, marginTop: 4, color: "#F26722" }}>₹{fmt(order.total_amount)}</div>
+          </div>
+        </div>
+
+        {/* Delivery address */}
+        <div style={{ padding: "16px 18px", background: "#faf7f4", borderRadius: 14, marginBottom: 12 }}>
+          <div style={{ fontSize: 11, color: "#999", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Delivery Details</div>
+          <div style={{ fontSize: 14, color: "#333", lineHeight: 1.7 }}>
+            <div><b>{order.customer_name}</b></div>
+            <div>{order.shipping_address}</div>
+            <div style={{ marginTop: 4, color: "#666" }}>📞 {order.customer_phone}</div>
+            <div style={{ color: "#666" }}>✉️ {order.customer_email}</div>
+            {order.notes && <div style={{ marginTop: 6, fontStyle: "italic", color: "#888" }}>"{order.notes}"</div>}
+          </div>
+        </div>
+
+        <button onClick={onClose} style={{
+          width: "100%", padding: "15px", borderRadius: 14, border: "none",
+          background: "linear-gradient(135deg,#F26722,#e55a10)", color: "#fff",
+          fontWeight: 800, fontSize: 15, cursor: "pointer", marginTop: 8,
+        }}>
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Main Account Component ──────────────────────────── */
+export default function Account() {
+  const navigate = useNavigate();
+  const accessToken = localStorage.getItem("accessToken");
+  const userData = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem("userData") || "{}"); } catch { return {}; }
+  }, []);
+
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [selected, setSelected] = useState(null);
+
+  const isLoggedIn = Boolean(accessToken);
+  const userEmail = userData?.email || "";
+  const userName = userData?.name || userEmail.split("@")[0] || "Guest";
+  const userAvatar = userData?.picture || null;
+
+  /* fetch paid orders */
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      if (isLoggedIn) {
+        const data = await fetchMyOrders();
+        setOrders(Array.isArray(data) ? data : []);
+      } else {
+        // guest: fetch via tokens
+        const tokens = getGuestTokens();
+        if (!tokens.length) { setOrders([]); return; }
+        const results = await Promise.allSettled(
+          tokens.map(({ orderId, token }) => fetchOrderByToken(orderId, token))
+        );
+        const ok = [];
+        results.forEach((r, i) => {
+          if (r.status === "fulfilled") ok.push(r.value);
+          else localStorage.removeItem(tokens[i].key);
+        });
+        ok.sort((a, b) => Number(b.id) - Number(a.id));
+        setOrders(ok);
+      }
+    } catch (e) {
+      setError(e?.message || "Failed to load orders");
+    } finally {
+      setLoading(false);
+    }
+  }, [isLoggedIn]);
+
+  useEffect(() => { load(); }, [load]);
+
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Mulish:wght@400;500;600;700&display=swap');
+        @keyframes slideUp { from { opacity:0; transform:translateY(60px) } to { opacity:1; transform:translateY(0) } }
+        @keyframes fadeIn  { from { opacity:0 } to { opacity:1 } }
+        .ac-order-list { display:flex; flex-direction:column; gap:12px; }
+        .ac-empty { text-align:center; padding:60px 20px; color:#bbb; }
+        .ac-empty .icon { font-size:52px; margin-bottom:16px; }
+        .ac-empty p { font-size:15px; line-height:1.6; }
+      `}</style>
+
+      <div style={{ minHeight: "100vh", background: "#fdf9f6", fontFamily: "'Mulish', sans-serif", paddingBottom: 60 }}>
+
+        {/* ── Top bar ── */}
+        <div style={{ background: "#fff", borderBottom: "1px solid #f0ebe4", padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 100 }}>
+          <button onClick={() => navigate("/")} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "#666", fontSize: 14, fontWeight: 600, fontFamily: "'Mulish', sans-serif" }}>
+            ← Home
+          </button>
+          <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 16, color: "#F26722" }}>My Orders</span>
+          <div style={{ width: 60 }} />
+        </div>
+
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: "28px 16px" }}>
+
+          {/* ── User card ── */}
+          <div style={{
+            background: "linear-gradient(135deg, #F26722 0%, #e05510 100%)",
+            borderRadius: 24, padding: "24px 22px", marginBottom: 28, color: "#fff",
+            display: "flex", alignItems: "center", gap: 16,
+            boxShadow: "0 8px 30px rgba(242,103,34,0.3)",
+          }}>
+            {userAvatar
+              ? <img src={userAvatar} alt={userName} style={{ width: 52, height: 52, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.4)" }} />
+              : (
+                <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 800, border: "2px solid rgba(255,255,255,0.3)" }}>
+                  {userName[0]?.toUpperCase()}
+                </div>
+              )
+            }
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 18 }}>{isLoggedIn ? userName : "Guest"}</div>
+              <div style={{ fontSize: 13, opacity: 0.8, marginTop: 2 }}>{isLoggedIn ? userEmail : "Orders from this device"}</div>
+            </div>
+            {isLoggedIn && (
+              <button onClick={() => { localStorage.removeItem("accessToken"); localStorage.removeItem("userData"); navigate("/"); }}
+                style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)", borderRadius: 10, padding: "8px 14px", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Mulish', sans-serif" }}>
+                Sign out
+              </button>
+            )}
+          </div>
+
+          {/* ── Orders ── */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <h3 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 20, color: "#1a1a1a", margin: 0 }}>
+              {isLoggedIn ? "Your Orders" : "Tracked Orders"}
+            </h3>
+            <button onClick={load} disabled={loading} style={{ background: "none", border: "1px solid #e8e0d8", borderRadius: 10, padding: "7px 14px", fontSize: 13, fontWeight: 700, color: "#F26722", cursor: "pointer", fontFamily: "'Mulish', sans-serif" }}>
+              {loading ? "…" : "↻ Refresh"}
             </button>
           </div>
 
-          {token ? (
-            <button className="logout-btn" onClick={handleLogout}>
-              Logout
-            </button>
+          {error && (
+            <div style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 12, padding: "12px 16px", color: "#dc2626", fontSize: 14, marginBottom: 16 }}>
+              {error}
+            </div>
+          )}
+
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "60px 0", color: "#ccc" }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
+              <p style={{ fontSize: 14 }}>Loading your orders…</p>
+            </div>
+          ) : orders.length === 0 ? (
+            <div className="ac-empty">
+              <div className="icon">🛍️</div>
+              <p><b style={{ color: "#555" }}>No orders yet</b><br />Once you place an order, it'll show up here.</p>
+              <button onClick={() => navigate("/")} style={{ marginTop: 20, background: "#F26722", color: "#fff", border: "none", borderRadius: 50, padding: "12px 28px", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "'Mulish', sans-serif" }}>
+                Shop Now
+              </button>
+            </div>
           ) : (
-            <button className="logout-btn" onClick={() => navigate("/admin/login")}>
-              Admin Login
-            </button>
+            <div className="ac-order-list">
+              {orders.map(o => (
+                <OrderCard key={o.id} order={o} onClick={() => setSelected(o)} />
+              ))}
+            </div>
           )}
         </div>
       </div>
 
-      {tab === "orders" && (
-        <div className="orders-layout">
-          <div className="panel">
-            <h3>{token ? "My Orders" : "Tracked Orders"}</h3>
-
-            {ordersLoading ? (
-              <div className="muted">Loading orders…</div>
-            ) : ordersError ? (
-              <div className="error">{ordersError}</div>
-            ) : displayedOrders.length === 0 ? (
-              <div className="muted">
-                No orders found.
-                <div style={{ marginTop: 8 }}>
-                  If you just placed an order, it will appear here on this device (guest), or under your login (user).
-                </div>
-              </div>
-            ) : (
-              <div className="order-list vertical">
-                {displayedOrders.map((o) => (
-                  <button
-                    key={o.id}
-                    className="order-card"
-                    onClick={() => openOrder(o)}
-                    type="button"
-                  >
-                    <div className="row">
-                      <b>Order #{o.id}</b>
-                      <span className="badge">{o.status}</span>
-                    </div>
-                    <div className="muted">{o.product_name}</div>
-                    <div className="row muted">
-                      <span>{o.order_date ? new Date(o.order_date).toLocaleString() : ""}</span>
-                      <span>₹{money(o.total_amount)}</span>
-                    </div>
-                    <div className="tapHint">Tap to view details</div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {isOrderModalOpen && (
-            <div className="modalOverlay" onClick={closeModal} role="presentation">
-              <div
-                className="modal"
-                onClick={(e) => e.stopPropagation()}
-                role="dialog"
-                aria-modal="true"
-                aria-label="Order Details"
-              >
-                <div className="modalHeader">
-                  <div>
-                    <div className="modalTitle">Order Details</div>
-                    <div className="muted small">
-                      {selectedOrder?.order_date ? new Date(selectedOrder.order_date).toLocaleString() : "-"}
-                    </div>
-                  </div>
-                  <button className="modalClose" onClick={closeModal} aria-label="Close">
-                    ✕
-                  </button>
-                </div>
-
-                {!selectedOrder ? (
-                  <div className="muted">Select an order to view details.</div>
-                ) : (
-                  <>
-                    {approved ? (
-                      <div className="infoBanner success">
-                        ✅ Order confirmed — product will arrive in <b>3 days</b>.
-                      </div>
-                    ) : (
-                      <div className="infoBanner">
-                        ⏳ Waiting for admin approval. You’ll see delivery ETA after confirmation.
-                      </div>
-                    )}
-
-                    <div className="details-grid">
-                      <div>
-                        <div className="muted">Order ID</div>
-                        <div><b>#{selectedOrder.id}</b></div>
-                      </div>
-                      <div>
-                        <div className="muted">Status</div>
-                        <div><b>{selectedOrder.status}</b></div>
-                      </div>
-                      <div>
-                        <div className="muted">Payment</div>
-                        <div><b>{selectedOrder.payment_status}</b></div>
-                      </div>
-                      <div>
-                        <div className="muted">Total (server)</div>
-                        <div><b>₹{money(selectedOrder.total_amount)}</b></div>
-                      </div>
-                    </div>
-
-                    <hr />
-
-                    <h4>Item</h4>
-                    <div className="row">
-                      <span>{selectedOrder.product_name}</span>
-                      <span>
-                        ₹{money(selectedOrder.unit_price)} × {selectedOrder.quantity}
-                      </span>
-                    </div>
-
-                    <div className="addr" style={{ marginTop: 12 }}>
-                      <div>
-                        <b>Delivery Address:</b> {selectedOrder.shipping_address}
-                      </div>
-                      <div>
-                        <b>Phone:</b> {selectedOrder.customer_phone}
-                      </div>
-                      <div>
-                        <b>Email:</b> {selectedOrder.customer_email}
-                      </div>
-                      {selectedOrder.notes ? (
-                        <div>
-                          <b>Notes:</b> {selectedOrder.notes}
-                        </div>
-                      ) : null}
-                    </div>
-
-                    <div className="modalFooter">
-                      <button className="btnSoft" onClick={closeModal}>
-                        Close
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {tab === "cart" && (
-        <div className="panel">
-          <h3>Cart</h3>
-
-          {cart.length === 0 ? (
-            <div className="muted">Your cart is empty.</div>
-          ) : (
-            <>
-              <div className="cart-list">
-                {cart.map((it) => (
-                  <div key={it.id} className="cart-item">
-                    <div className="cart-left">
-                      <div><b>{it.name}</b></div>
-                      <div className="muted">₹{money(it.price)}</div>
-                    </div>
-
-                    <div className="cart-right">
-                      <input
-                        type="number"
-                        min={1}
-                        value={it.qty || 1}
-                        onChange={(e) => updateQty(it.id, e.target.value)}
-                      />
-                      <div className="muted">
-                        ₹{money(Number(it.price || 0) * Number(it.qty || 1))}
-                      </div>
-                      <button onClick={() => removeItem(it.id)}>Remove</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="bill" style={{ maxWidth: 420, marginTop: 12 }}>
-                <div className="row">
-                  <span>Subtotal</span>
-                  <span>₹{money(cartSubtotal)}</span>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-    </div>
+      {selected && <OrderModal order={selected} onClose={() => setSelected(null)} />}
+    </>
   );
 }
