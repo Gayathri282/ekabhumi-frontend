@@ -37,11 +37,12 @@ const getShippingCharge = (pincode) => {
   }
 };
 
-const BuyModal = ({ open, onClose, product, quantity, user, onSuccess }) => {
+// No `user` prop needed anymore — guest checkout only
+const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
   const [orderLoading, setOrderLoading] = useState(false);
 
   // server total (after /orders create)
-  const [serverTotal, setServerTotal] = useState(null); // number | null
+  const [serverTotal, setServerTotal] = useState(null);
 
   // prevent double verify
   const verifiedRef = useRef(false);
@@ -72,17 +73,21 @@ const BuyModal = ({ open, onClose, product, quantity, user, onSuccess }) => {
 
   useEffect(() => {
     if (!open) return;
-
     // reset state each open
     setServerTotal(null);
     verifiedRef.current = false;
-
-    setOrderForm((prev) => ({
-      ...prev,
-      fullName: user?.name || prev.fullName || "",
-      email: user?.email || prev.email || "",
-    }));
-  }, [open, user]);
+    // No user pre-fill — guest checkout, form always starts empty
+    setOrderForm({
+      fullName: "",
+      phoneNumber: "",
+      email: "",
+      address: "",
+      city: "",
+      state: "",
+      pincode: "",
+      notes: "",
+    });
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -146,7 +151,7 @@ const BuyModal = ({ open, onClose, product, quantity, user, onSuccess }) => {
     verifiedRef.current = false;
 
     try {
-      // ✅ PUBLIC order payload only (server computes price + shipping)
+      // Guest order payload — no user_id or auth token
       const orderPayload = {
         product_id: product.id,
         quantity: Number(quantity || 1),
@@ -190,7 +195,7 @@ const BuyModal = ({ open, onClose, product, quantity, user, onSuccess }) => {
         throw new Error("Failed to create Razorpay order (bad server response).");
       }
 
-      // 3) Checkout
+      // 3) Open Razorpay Checkout
       const options = {
         key: rp.keyId,
         amount: rp.amount, // paise (from backend)
@@ -204,7 +209,6 @@ const BuyModal = ({ open, onClose, product, quantity, user, onSuccess }) => {
           contact: orderForm.phoneNumber,
         },
         handler: async (response) => {
-          // prevent double verify
           if (verifiedRef.current) return;
           verifiedRef.current = true;
 
@@ -226,7 +230,6 @@ const BuyModal = ({ open, onClose, product, quantity, user, onSuccess }) => {
         },
         modal: {
           ondismiss: () => {
-            // user closed payment modal
             alert("Payment cancelled.");
           },
         },

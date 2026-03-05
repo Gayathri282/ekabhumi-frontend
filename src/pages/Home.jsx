@@ -30,11 +30,8 @@ const Home = () => {
     } catch { return []; }
   });
 
-  const [loading, setLoading] = useState(products.length === 0);
-  const [error, setError] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 992);
-  const [search, setSearch] = useState("");
 
   // Auth
   const [isLoggedIn, setIsLoggedIn] = useState(() => hasSession());
@@ -47,10 +44,9 @@ const Home = () => {
   const loginDropdownRef = useRef(null);
   const googleBtnRef = useRef(null);
 
-  const trackRef = useRef(null);
   const navigate = useNavigate();
 
-  // ── sorted + filtered products ──────────────────────────────────────────────
+  // ── sorted products ──────────────────────────────────────────────────────────
   const sortedProducts = useMemo(() => {
     if (!Array.isArray(products)) return [];
     return [...products].sort((a, b) => {
@@ -61,25 +57,14 @@ const Home = () => {
     });
   }, [products]);
 
-  const filteredProducts = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return sortedProducts;
-    return sortedProducts.filter(
-      (p) =>
-        p.name?.toLowerCase().includes(q) ||
-        p.description?.toLowerCase().includes(q)
-    );
-  }, [sortedProducts, search]);
-
   const closeMenu = () => setMenuOpen(false);
 
   // ── Google credential handler ───────────────────────────────────────────────
- const handleCredential = useCallback(async (googleIdToken) => {
+  const handleCredential = useCallback(async (googleIdToken) => {
     setLoginLoading(true);
     try {
       const data = await googleLogin(googleIdToken);
 
-      // If admin, store as adminToken too and redirect
       if (data?.role === "admin") {
         localStorage.setItem("adminToken", data.access_token);
         localStorage.setItem("userData", JSON.stringify({ role: "admin", email: data.email }));
@@ -98,7 +83,7 @@ const Home = () => {
       setLoginLoading(false);
     }
   }, [navigate]);
-  
+
   // ── init Google script + One Tap ────────────────────────────────────────────
   useEffect(() => {
     const init = () => initGoogleOneTap(handleCredential);
@@ -119,7 +104,6 @@ const Home = () => {
   useEffect(() => {
     if (!showLoginDropdown || isLoggedIn) return;
     if (!googleBtnRef.current || !window.google?.accounts?.id) return;
-    // small delay so the DOM node is visible
     const t = setTimeout(() => {
       window.google.accounts.id.renderButton(googleBtnRef.current, {
         theme: "outline",
@@ -175,14 +159,10 @@ const Home = () => {
       const list = Array.isArray(data) ? data : [];
       setProducts(list);
       localStorage.setItem("cachedProducts", JSON.stringify(list));
-      setError("");
     } catch (err) {
       console.error("Failed to load products", err);
-      if (products.length === 0) setError("Temporary issue loading products.");
-    } finally {
-      setLoading(false);
     }
-  }, [products.length]);
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -203,37 +183,18 @@ const Home = () => {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const handleImageError = (e) => {
-    e.target.onerror = null;
-    e.target.src = "https://placehold.co/400x300/EEE/31343C?text=Product+Image";
-  };
-
   const handleLogoError = (e) => {
     e.target.onerror = null;
     e.target.src = "/images/logo-placeholder.png";
   };
 
+  // ── Shop Now → priority 1 product detail page ───────────────────────────────
   const goToPriorityOneProduct = () => {
-    if (!products?.length) {
-      document.getElementById("products")?.scrollIntoView({ behavior: "smooth" });
-      return;
-    }
-    const priorityOne = products.find((p) => Number(p.priority) === 1);
+    const priorityOne = sortedProducts.find((p) => Number(p.priority) === 1);
     const top = priorityOne || sortedProducts[0];
-    if (!top?.id) {
-      document.getElementById("products")?.scrollIntoView({ behavior: "smooth" });
-      return;
+    if (top?.id) {
+      navigate(`/products/${top.id}`);
     }
-    navigate(`/products/${top.id}`);
-  };
-
-  const scrollCarousel = (dir) => {
-    const el = trackRef.current;
-    if (!el) return;
-    const card = el.querySelector(".product-card");
-    const gap = 16;
-    const step = card ? card.getBoundingClientRect().width + gap : el.clientWidth * 0.85;
-    el.scrollBy({ left: dir === "next" ? step : -step, behavior: "smooth" });
   };
 
   // ── auth button (desktop) ───────────────────────────────────────────────────
@@ -310,7 +271,6 @@ const Home = () => {
 
         <div className="nav-links desktop-only">
           <a href="#home">Home</a>
-          <a href="#products">Products</a>
           <a href="#about">About</a>
         </div>
 
@@ -334,7 +294,6 @@ const Home = () => {
 
             <div className="mobileMenuSection">
               <a className="mobileMenuItem" href="#home" onClick={closeMenu}>Home</a>
-              <a className="mobileMenuItem" href="#products" onClick={closeMenu}>Products</a>
               <a className="mobileMenuItem" href="#about" onClick={closeMenu}>About</a>
 
               <div className="mobileMenuDivider" />
@@ -370,7 +329,7 @@ const Home = () => {
         </div>
       )}
 
-      {/* HERO */}
+      {/* HERO — full page, Shop Now goes directly to product detail */}
       <section id="home" className="hero" style={{ backgroundImage: "url(/images/hero-mobile.png)" }}>
         <div className="hero-cta desktop-only">
           <button className="primary-btn" onClick={goToPriorityOneProduct}>Shop Now</button>
@@ -383,86 +342,13 @@ const Home = () => {
         </div>
       </section>
 
-      {/* PRODUCTS */}
-      <section id="products" className="product-preview">
-        {/* Search bar */}
-        <div className="search-wrap">
-          <div className="search-box">
-            <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              className="search-input"
-              type="text"
-              placeholder="Search products…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            {search && (
-              <button className="search-clear" onClick={() => setSearch("")} aria-label="Clear search">×</button>
-            )}
-          </div>
-        </div>
-
-        {error && <div className="error-message">⚠️ {error}</div>}
-        {loading && <p className="loading-text">Loading products...</p>}
-
-        {!loading && filteredProducts.length === 0 && !error && (
-          <p style={{ textAlign: "center", color: "#666" }}>
-            {search ? `No products found for "${search}"` : "No products available"}
-          </p>
-        )}
-
-        {!loading && filteredProducts.length > 0 && (
-          <div className="carousel-container">
-            <button className="carousel-arrow prev" onClick={() => scrollCarousel("prev")} type="button" aria-label="Previous">‹</button>
-
-            <div className="carousel-track" ref={trackRef}>
-              {filteredProducts.map((p) => {
-                const qty = Number(p.quantity ?? 0);
-                const availableSoon = qty <= 0;
-                const onView = () => { if (availableSoon) return; navigate(`/products/${p.id}`); };
-
-                return (
-                  <div className="product-card" key={p.id}>
-                    {availableSoon && <div className="available-soon-badge">Available Soon</div>}
-                    <img
-                      src={p.image_url}
-                      alt={p.name}
-                      className="product-image"
-                      onError={handleImageError}
-                      loading="lazy"
-                    />
-                    <div className="product-info">
-                      <span className="product-name">{p.name}</span>
-                      <button
-                        className={`view-details-btn ${availableSoon ? "isDisabled" : ""}`}
-                        onClick={onView}
-                        type="button"
-                        disabled={availableSoon}
-                        title={availableSoon ? "Available soon" : "View details"}
-                      >
-                        View Details
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <button className="carousel-arrow next" onClick={() => scrollCarousel("next")} type="button" aria-label="Next">›</button>
-          </div>
-        )}
-      </section>
+      {/* No products carousel section — Shop Now goes straight to product detail */}
 
       <section id="about" className="pageSection">
         <About />
       </section>
-      <Blog/>
-      <Testimonial/>
-
-      <Footer />
+      <Blog />
+      
     </>
   );
 };
