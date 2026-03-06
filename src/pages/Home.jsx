@@ -407,18 +407,24 @@ const Home = () => {
         </div>
       )}
 
-      {/* HERO */}
-      <section id="home" className="hero" style={{ backgroundImage: "url(/images/hero-mobile.png)" }}>
-        <div className="hero-cta desktop-only">
-          <button className="primary-btn" onClick={goToPriorityOneProduct}>Shop Now</button>
-        </div>
-        <div className="hero-mobile-wrap">
-          <img className="hero-mobile-img" src="/images/hero-mobile.png" alt="Eka Bhumi" loading="lazy" />
-          <div className="hero-cta mobile-cta">
-            <button className="primary-btn" onClick={goToPriorityOneProduct}>Shop Now</button>
-          </div>
-        </div>
-      </section>
+     {/* HERO */}
+<section id="home" className="hero">
+  <picture className="hero-media">
+    <source media="(max-width: 992px)" srcSet="/images/hero-mobile.png" />
+    <img
+      className="hero-img"
+      src="/images/hero-desktop.png"
+      alt="Eka Bhumih skincare hero banner"
+      loading="eager"
+    />
+  </picture>
+
+  <div className="hero-cta">
+    <button className="primary-btn" onClick={goToPriorityOneProduct}>
+      Shop Now
+    </button>
+  </div>
+</section>
 
       {/* ✅ RESTORED: Products section with search bar and carousel */}
       <section id="products" className="product-preview">

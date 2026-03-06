@@ -166,36 +166,55 @@ body{
   cursor:pointer;
 }
 
-/* Hamburger hidden by default (desktop/laptop) */
+/* Hamburger hidden by default (desktop) */
 .hamburger{ display:none; }
 
-/* ===================== HERO ===================== */
+/* ===================== HERO — DESKTOP ===================== */
 .hero{
   width:100%;
-  min-height:calc(110vh - 80px);
+  height:calc(100vh - 80px);
   margin-top:80px;
   position:relative;
   overflow:hidden;
-  background-size:cover;
-  background-position:center;
-  background-repeat:no-repeat;
+  background-color:#f7ede4;
   isolation:isolate;
   z-index:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 
-/* desktop CTA sits on hero bg */
+/* <picture> fills the hero box */
+.hero-media{
+  display:block;
+  width:100%;
+  height:100%;
+}
+
+/* ✅ FIX: scale image to fit full width AND height — no cropping, no gaps */
+.hero-img{
+  width:100%;
+  height:100%;
+  object-fit:fill;
+  display:block;
+}
+
+/* CTA button — always visible at bottom of hero */
 .hero-cta{
   position:absolute;
   left:50%;
   transform:translateX(-50%);
-  bottom:100px;
+  bottom:clamp(20px,4vh,60px);
   z-index:3;
   display:flex;
   justify-content:center;
   width:100%;
   pointer-events:none;
 }
-.hero-cta .primary-btn{ pointer-events:auto; }
+
+.hero-cta .primary-btn{
+  pointer-events:auto;
+}
 
 .primary-btn{
   background:linear-gradient(135deg,var(--dark-orange),#ff8c42);
@@ -268,12 +287,10 @@ body{
   scroll-snap-align:start;
   flex:0 0 calc((100% - 48px) / 4);
   max-width:calc((100% - 48px) / 4);
-
   background:#fff;
   border-radius:14px;
   box-shadow:0 6px 20px rgba(0,0,0,.10);
   transition:transform .2s ease, box-shadow .2s ease;
-
   display:flex;
   flex-direction:column;
   overflow:hidden;
@@ -490,32 +507,27 @@ body{
   object-fit:cover;
 }
 
-/* ===================== LAPTOP ONLY (keep your look) ===================== */
 /* ===================== LAPTOP ONLY (1200–1600px) ===================== */
-/* ===================== LAPTOP ONLY (show 5 cards) ===================== */
 @media (min-width:1200px) and (max-width:1600px){
 
-  /* No max-width -> allow full row of 5 */
   .carousel-container{
     max-width:none;
     margin:0;
   }
 
-  /* No extra padding -> no white gaps */
   .carousel-track{
     padding:0 !important;
     gap:16px !important;
     justify-content:flex-start !important;
   }
 
-  /* ✅ 5 cards per view: 4 gaps × 16px = 64px */
+  /* 5 cards per view: 4 gaps × 16px = 64px */
   .product-card{
     flex: 0 0 calc((100% - 64px) / 5);
     max-width: calc((100% - 64px) / 5);
     height:500px;
   }
 
-  /* image fills the card height */
   .product-image{
     width:100%;
     height:100%;
@@ -526,12 +538,8 @@ body{
   }
 }
 
-
 /* =========================================================
-   ✅ MOBILE/TABLET (≤992px)
-   ========================================================= */
-/* =========================================================
-   ✅ MOBILE/TABLET (≤992px)
+   MOBILE/TABLET (≤992px)
    ========================================================= */
 @media (max-width:992px){
 
@@ -561,34 +569,40 @@ body{
     border-radius:999px;
   }
 
-  /* HERO (mobile) */
+  /* ✅ HERO (mobile) — locked to viewport, no scroll needed */
   .hero{
     background-image:none !important;
     margin-top:80px !important;
     padding:0 !important;
     min-height:auto !important;
+    height:calc(100vh - 80px) !important;
+    overflow:hidden !important;
+    background:#f7ede4 !important;
   }
 
   .hero-mobile-wrap{
     display:block !important;
     width:100% !important;
     position:relative !important;
+    height:100% !important;
     margin:0 !important;
     padding:0 !important;
-    line-height:0 !important;
-    font-size:0 !important;
+    background:#f7ede4 !important;
+    overflow:hidden !important;
   }
 
+  /* ✅ Image fills available height, leaving room for button */
   .hero-mobile-img{
     display:block !important;
     width:100% !important;
-    height:320px !important;
-    object-fit:cover !important;
-    object-position:center !important;
+    height:calc(100vh - 80px - 70px) !important;
+    max-height:calc(100vh - 80px - 70px) !important;
+    object-fit:contain !important;
+    object-position:center top !important;
     margin:0 !important;
     padding:0 !important;
     vertical-align:top !important;
-    background:transparent !important;
+    background:#f7ede4 !important;
   }
 
   .hero-cta.mobile-cta{
@@ -596,17 +610,26 @@ body{
     position:absolute !important;
     left:50% !important;
     transform:translateX(-50%) !important;
-    bottom:14px !important;
+    bottom:10px !important;
     width:100% !important;
     justify-content:center !important;
+    align-items:center !important;
     z-index:4 !important;
     pointer-events:none !important;
     margin:0 !important;
-    padding:0 !important;
+    padding:0 12px !important;
   }
-  .hero-cta.mobile-cta .primary-btn{
+
+  .hero-cta.mobile-cta .primary-btn,
+  .hero-cta .primary-btn{
     pointer-events:auto !important;
     margin:0 !important;
+    padding:10px 28px !important;
+    font-size:13px !important;
+    font-weight:800 !important;
+    border-radius:30px !important;
+    letter-spacing:0.5px !important;
+    box-shadow:0 6px 16px rgba(242,103,34,.35) !important;
   }
 
   /* PRODUCTS (mobile) */
@@ -654,17 +677,24 @@ body{
   }
 }
 
-
-/* ✅ Small phones (≤480px) */
+/* ✅ Small phones (≤480px) — keep contain so full image shows */
 @media (max-width:480px){
   .hero-mobile-img{
-    height:42vh !important;
-    max-height:320px !important;
+    object-fit:contain !important;
+    object-position:center top !important;
   }
+
+  .hero-cta.mobile-cta .primary-btn,
+  .hero-cta .primary-btn{
+    padding:8px 22px !important;
+    font-size:12px !important;
+  }
+
   .product-card{ height:410px !important; }
   .product-image{ height:300px !important; }
 }
 
+/* ── Auth actions ── */
 .auth-actions {
   display: flex;
   align-items: center;
@@ -680,10 +710,7 @@ body{
   cursor: pointer;
   opacity: 0.85;
 }
-
-.review-login-link:hover {
-  opacity: 1;
-}
+.review-login-link:hover { opacity: 1; }
 
 /* ── Auth button ── */
 .auth-wrap { position: relative; }
