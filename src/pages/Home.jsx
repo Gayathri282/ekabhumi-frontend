@@ -246,8 +246,8 @@ const Home = () => {
         ) : (
           <button
             className="nav-auth-btn"
-            onClick={() => setShowLoginDropdown(v => !v)}
-            title={userEmail}
+            onClick={() => navigate("/account")}
+            title={`${userName} — My Account`}
             style={{ width: 38, height: 38, borderRadius: "50%", padding: 0, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: userPicture ? "transparent" : "#F26722", color: "#fff", border: userPicture ? "2px solid #F26722" : "none" }}
           >
             <Avatar />
@@ -386,7 +386,7 @@ const Home = () => {
                 ) : (
                   <>
                     <button className="mobileMenuItem" onClick={() => { closeMenu(); navigate("/account"); }}>
-                      My Orders
+                      👤 My Account
                     </button>
                     <button className="mobileMenuItem mobileMenuItem--danger" onClick={() => { handleLogout(); closeMenu(); }}>
                       Sign Out
