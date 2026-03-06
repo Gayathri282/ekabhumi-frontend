@@ -32,7 +32,7 @@ function StarRow({ rating, interactive = false, onRate = (_n) => {} }) {
   );
 }
 
-const Testimonial = () => {
+const Testimonial = ({ onLogin = null }) => {
   const trackRef     = useRef(null);
   const googleBtnRef = useRef(null);
 
@@ -108,6 +108,17 @@ const Testimonial = () => {
 
   // ── Google credential handler (uses ref — no stale closure) ────────────────
   const handleCredential = useCallback(async (googleIdToken) => {
+    // If parent passed onLogin (Home.jsx), use that — avoids double init conflict
+    if (onLogin) {
+      try {
+        await onLogin(googleIdToken);
+        setIsLoggedIn(hasSession());
+        isLoggedInRef.current = hasSession();
+      } catch (e) {
+        setLoginError(e?.message || "Login failed");
+      }
+      return;
+    }
     setLoginLoading(true);
     setLoginError("");
     try {
@@ -115,16 +126,16 @@ const Testimonial = () => {
       setIsLoggedIn(true);
       isLoggedInRef.current = true;
       window.google?.accounts?.id?.cancel();
-      // Modal is already open — just re-render to show review form
     } catch (e) {
       setLoginError(e?.message || "Login failed");
     } finally {
       setLoginLoading(false);
     }
-  }, []);
+  }, [onLogin]);
 
-  // ── init Google once ────────────────────────────────────────────────────────
+  // ── init Google ONLY if parent hasn't already initialized it ───────────────
   useEffect(() => {
+    if (onLogin) return; // parent (Home.jsx) handles Google init
     const init = () => {
       if (!GOOGLE_CLIENT_ID || !window.google?.accounts?.id) return;
       window.google.accounts.id.initialize({
@@ -134,7 +145,6 @@ const Testimonial = () => {
         cancel_on_tap_outside: true,
       });
     };
-
     if (window.google?.accounts?.id) { init(); return; }
     const existing = document.querySelector('script[src*="accounts.google.com/gsi/client"]');
     if (!existing) {
@@ -146,7 +156,7 @@ const Testimonial = () => {
     } else {
       existing.addEventListener("load", init);
     }
-  }, [handleCredential]);
+  }, [handleCredential, onLogin]);
 
   // ── render Google button whenever modal is open and user not logged in ──────
   useEffect(() => {

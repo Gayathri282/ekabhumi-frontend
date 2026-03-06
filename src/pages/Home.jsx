@@ -496,16 +496,14 @@ const Home = () => {
         <About />
       </section>
 
+      {/* ✅ RESTORED: Testimonials and Blog with section IDs for nav links */}
+      <section id="testimonials">
+        <Testimonial onLogin={handleCredential} />
+      </section>
+
       <section id="blog">
         <Blog />
       </section>
-
-      {/* ✅ RESTORED: Testimonials and Blog with section IDs for nav links */}
-      <section id="testimonials">
-        <Testimonial />
-      </section>
-
-      
 
       <Footer />
     </>
