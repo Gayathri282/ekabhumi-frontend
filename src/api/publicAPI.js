@@ -1,8 +1,6 @@
-// src/api/publicAPI.js
 const API_BASE = process.env.REACT_APP_API_URL || "https://ekb-backend.onrender.com";
 const getUrl = (endpoint) => API_BASE + endpoint;
 
-// Only ONE token key for the whole app
 const getAuthHeaders = () => {
   const token = localStorage.getItem("accessToken");
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -15,6 +13,37 @@ const handleJson = async (res, defaultErr = "Request failed") => {
   if (!res.ok) throw new Error(data.detail || data.message || text || `${defaultErr} (${res.status})`);
   return data;
 };
+
+// ── Warmup: wake server before important POST calls ──────────────────────────
+const warmupServer = async () => {
+  try {
+    await fetch(getUrl("/health"), { method: "GET" });
+    // Give server 800ms to be fully ready
+    await new Promise(r => setTimeout(r, 800));
+  } catch {
+    // ignore warmup errors
+  }
+};
+
+// ── Fetch with retry (for cold start recovery) ────────────────────────────────
+const fetchWithRetry = async (url, options, retries = 3, delayMs = 5000) => {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, options);
+      return res;
+    } catch (err) {
+      console.warn(`Attempt ${attempt} failed:`, err.message);
+      if (attempt === retries) {
+        throw new Error(
+          "Server is starting up, please wait a moment and try again."
+        );
+      }
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+  }
+};
+
+// ── Public API ────────────────────────────────────────────────────────────────
 
 export async function fetchProducts() {
   const res = await fetch(getUrl("/products"), {
@@ -52,29 +81,29 @@ export async function fetchProductById(id) {
 
 /**
  * PUBLIC: Create order
- * Backend returns: { order: {...}, public_token: "..." }
+ * Warms up server first, then retries on connection failure
  */
 export async function createOrder(orderData) {
-  // 1. Wake server first
-  try {
-    await fetch(getUrl("/health"));
-  } catch {}
+  // Wake server before placing order
+  await warmupServer();
 
-  // 2. Small wait for server to be ready
-  await new Promise(r => setTimeout(r, 500));
-
-  // 3. Now create order
-  const res = await fetch(getUrl("/orders"), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
+  const res = await fetchWithRetry(
+    getUrl("/orders"),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(orderData),
     },
-    body: JSON.stringify(orderData),
-  });
+    3,   // 3 attempts
+    5000 // 5 seconds between retries
+  );
 
   return handleJson(res, "Failed to create order");
 }
+
 /**
  * USER: Get my orders (requires JWT)
  */
@@ -91,7 +120,6 @@ export async function fetchMyOrders() {
 
 /**
  * PUBLIC: Get order by id + public_token
- * GET /orders/{orderId}?token=PUBLIC_TOKEN
  */
 export async function fetchOrderByToken(orderId, publicToken) {
   if (!orderId) throw new Error("Missing order id");
@@ -101,9 +129,7 @@ export async function fetchOrderByToken(orderId, publicToken) {
     getUrl(`/orders/${encodeURIComponent(orderId)}?token=${encodeURIComponent(publicToken)}`),
     {
       method: "GET",
-      headers: {
-        Accept: "application/json",
-      },
+      headers: { Accept: "application/json" },
     }
   );
 
@@ -111,18 +137,25 @@ export async function fetchOrderByToken(orderId, publicToken) {
 }
 
 /**
- * PUBLIC: Create Razorpay order for an existing DB order
- * Backend expects: { order_id, email, phone }
+ * PUBLIC: Create Razorpay order
+ * Also warms up server before calling
  */
 export async function createRazorpayOrder({ order_id, email, phone }) {
-  const res = await fetch(getUrl("/payments/razorpay/create-order"), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
+  await warmupServer();
+
+  const res = await fetchWithRetry(
+    getUrl("/payments/razorpay/create-order"),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ order_id, email, phone }),
     },
-    body: JSON.stringify({ order_id, email, phone }),
-  });
+    3,
+    5000
+  );
 
   return handleJson(res, "Failed to create Razorpay order");
 }
@@ -133,19 +166,24 @@ export async function verifyRazorpayPayment({
   razorpay_payment_id,
   razorpay_signature,
 }) {
-  const res = await fetch(getUrl("/payments/razorpay/verify"), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
+  const res = await fetchWithRetry(
+    getUrl("/payments/razorpay/verify"),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        dbOrderId,
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_signature,
+      }),
     },
-    body: JSON.stringify({
-      dbOrderId,
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-    }),
-  });
+    3,
+    3000
+  );
 
   return handleJson(res, "Payment verification failed");
 }

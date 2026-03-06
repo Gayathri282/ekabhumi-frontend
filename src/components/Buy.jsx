@@ -125,6 +125,7 @@ const LoginGate = ({ onClose, onLoginSuccess }) => {
 // ── Main BuyModal ─────────────────────────────────────────────────────────────
 const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
   const [orderLoading, setOrderLoading] = useState(false);
+  const [loadingMsg, setLoadingMsg]     = useState("Processing...");
   const [serverTotal, setServerTotal]   = useState(null);
   const [showLoginGate, setShowLoginGate] = useState(false);
   const verifiedRef                     = useRef(false);
@@ -228,149 +229,159 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
     setOrderForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const validateForm = () => {
-    const { fullName, phoneNumber, email, address, city, state, pincode } = orderForm;
-    if (!fullName.trim())                                      return alert("Please enter your full name"), false;
-    if (!phoneNumber.trim() || !/^\d{10}$/.test(phoneNumber)) return alert("Please enter a valid 10-digit phone number"), false;
-    if (!email.trim() || !/\S+@\S+\.\S+/.test(email))         return alert("Please enter a valid email address"), false;
-    if (!address.trim())                                       return alert("Please enter your delivery address"), false;
-    if (!city.trim())                                          return alert("Please enter your city"), false;
-    if (!state.trim())                                         return alert("Please enter your state"), false;
-    if (!pincode.trim() || !/^\d{6}$/.test(pincode))           return alert("Please enter a valid 6-digit pincode"), false;
-    return true;
-  };
-const handleSubmit = async () => {
-  if (orderLoading) return;
-  if (!product) return;
+const validateForm = () => {
+  const { fullName, phoneNumber, email, address, city, state, pincode } = orderForm;
 
-  if (!hasSession()) {
-    setShowLoginGate(true);
-    return;
+  if (!fullName.trim()) {
+    alert("Please enter your full name");
+    return false;
+  }
+  if (!phoneNumber.trim() || !/^\d{10}$/.test(phoneNumber)) {
+    alert("Please enter a valid 10-digit phone number");
+    return false;
+  }
+  if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) {
+    alert("Please enter a valid email address");
+    return false;
+  }
+  if (!address.trim()) {
+    alert("Please enter your delivery address");
+    return false;
+  }
+  if (!city.trim()) {
+    alert("Please enter your city");
+    return false;
+  }
+  if (!state.trim()) {
+    alert("Please enter your state");
+    return false;
+  }
+  if (!pincode.trim() || !/^\d{6}$/.test(pincode)) {
+    alert("Please enter a valid 6-digit pincode");
+    return false;
   }
 
-  if (!validateForm()) return;
-
-  if (!window.Razorpay) {
-    alert("Razorpay SDK not loaded. Please refresh the page and try again.");
-    return;
-  }
-
-  setOrderLoading(true);
-  setServerTotal(null);
-  verifiedRef.current = false;
-
-  try {
-    const orderPayload = {
-      product_id: product.id,
-      quantity: Number(quantity || 1),
-      customer_name: orderForm.fullName,
-      customer_email: orderForm.email,
-      customer_phone: orderForm.phoneNumber,
-      shipping_address: `${orderForm.address}, ${orderForm.city}, ${orderForm.state} - ${orderForm.pincode}`,
-      pincode: orderForm.pincode,
-      notes: orderForm.notes || null,
-    };
-
-    // 1) Create DB order
-    const created = await createOrder(orderPayload);
-
-    const orderObj = created?.order;
-    const dbOrderId = orderObj?.id;
-    const publicToken = created?.public_token;
-
-    if (!dbOrderId || !publicToken) {
-      throw new Error("Order creation failed (missing id/token).");
-    }
-
-    localStorage.setItem(`order_token_${dbOrderId}`, publicToken);
-    localStorage.setItem("last_order_id", String(dbOrderId));
-
-    const total = Number(orderObj?.total_amount || 0);
-    if (!total || total <= 0) {
-      throw new Error("Invalid server total. Please try again.");
-    }
-    setServerTotal(total);
-
-    // 2) Create Razorpay order
-    const rp = await createRazorpayOrder({
-      order_id: dbOrderId,
-      email: orderForm.email,
-      phone: orderForm.phoneNumber,
-    });
-
-    if (!rp?.razorpayOrderId || !rp?.keyId || !rp?.amount) {
-      throw new Error("Failed to create Razorpay order (bad server response).");
-    }
-
-    // 3) Open Razorpay Checkout
-    const options = {
-      key: rp.keyId,
-      amount: rp.amount,
-      currency: rp.currency || "INR",
-      name: "Ekabhumi",
-      description: `Order #${dbOrderId}`,
-      order_id: rp.razorpayOrderId,
-      prefill: {
-        name: orderForm.fullName,
-        email: orderForm.email,
-        contact: orderForm.phoneNumber,
-      },
-      handler: async (response) => {
-        if (verifiedRef.current) return;
-        verifiedRef.current = true;
-
-        try {
-          await verifyRazorpayPayment({
-            dbOrderId,
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature,
-          });
-
-          setOrderLoading(false);
-          onSuccess?.();
-          onClose?.();
-        } catch (e) {
-          console.error("VERIFY ERROR:", e);
-          setOrderLoading(false);
-          alert("Payment done, but verification failed. Please contact support.");
-        }
-      },
-      modal: {
-        ondismiss: () => {
-          setOrderLoading(false);
-        },
-      },
-      theme: { color: "#F26722" },
-    };
-
-    const rzp = new window.Razorpay(options);
-
-    rzp.on("payment.failed", (resp) => {
-      console.error("RAZORPAY PAYMENT FAILED:", resp);
-      console.error("RAZORPAY ERROR OBJECT:", resp?.error);
-
-      const error = resp?.error || {};
-
-      alert(
-        `Payment failed\n\n` +
-        `Code: ${error.code || "N/A"}\n` +
-        `Description: ${error.description || "N/A"}\n` +
-        `Reason: ${error.reason || "N/A"}\n` +
-        `Step: ${error.step || "N/A"}\n` +
-        `Source: ${error.source || "N/A"}`
-      );
-
-      setOrderLoading(false);
-    });
-
-    rzp.open();
-  } catch (err) {
-    console.error("HANDLE SUBMIT ERROR:", err);
-    setOrderLoading(false);
-    alert(err?.message || "Something went wrong. Please try again.");
-  }
+  return true;
 };
+  const handleSubmit = async () => {
+    if (orderLoading) return;
+    if (!product) return;
+
+    // ── Gate: must be logged in to place order ──
+    if (!hasSession()) {
+      setShowLoginGate(true);
+      return;
+    }
+
+    if (!validateForm()) return;
+
+    if (!window.Razorpay) {
+      alert("Razorpay SDK not loaded. Please refresh the page and try again.");
+      return;
+    }
+
+    setOrderLoading(true);
+    setLoadingMsg("Connecting to server...");
+    setServerTotal(null);
+    verifiedRef.current = false;
+
+    try {
+      // Small warmup delay so user sees the message
+      await new Promise(r => setTimeout(r, 500));
+      setLoadingMsg("Creating your order...");
+
+      const orderPayload = {
+        product_id: product.id,
+        quantity: Number(quantity || 1),
+        customer_name: orderForm.fullName,
+        customer_email: orderForm.email,
+        customer_phone: orderForm.phoneNumber,
+        shipping_address: `${orderForm.address}, ${orderForm.city}, ${orderForm.state} - ${orderForm.pincode}`,
+        pincode: orderForm.pincode,
+        notes: orderForm.notes || null,
+      };
+
+      // 1) Create DB order
+      const created = await createOrder(orderPayload);
+
+      const orderObj    = created?.order;
+      const dbOrderId   = orderObj?.id;
+      const publicToken = created?.public_token;
+
+      if (!dbOrderId || !publicToken) {
+        throw new Error("Order creation failed (missing id/token).");
+      }
+
+      localStorage.setItem(`order_token_${dbOrderId}`, publicToken);
+      localStorage.setItem("last_order_id", String(dbOrderId));
+
+      const total = Number(orderObj?.total_amount || 0);
+      if (!total || total <= 0) throw new Error("Invalid server total. Please try again.");
+      setServerTotal(total);
+
+      // 2) Create Razorpay order
+      const rp = await createRazorpayOrder({
+        order_id: dbOrderId,
+        email: orderForm.email,
+        phone: orderForm.phoneNumber,
+      });
+
+      if (!rp?.razorpayOrderId || !rp?.keyId || !rp?.amount) {
+        throw new Error("Failed to create Razorpay order (bad server response).");
+      }
+
+      // 3) Open Razorpay Checkout
+      const options = {
+        key: rp.keyId,
+        amount: rp.amount,
+        currency: rp.currency || "INR",
+        name: "Ekabhumi",
+        description: `Order #${dbOrderId}`,
+        order_id: rp.razorpayOrderId,
+        prefill: {
+          name: orderForm.fullName,
+          email: orderForm.email,
+          contact: orderForm.phoneNumber,
+        },
+        handler: async (response) => {
+          if (verifiedRef.current) return;
+          verifiedRef.current = true;
+
+          try {
+            await verifyRazorpayPayment({
+              dbOrderId,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+
+            onSuccess?.();
+            safeClose();
+          } catch (e) {
+            console.error(e);
+            alert("Payment done, but verification failed. Please contact support.");
+          }
+        },
+        modal: {
+          ondismiss: () => {},
+        },
+        theme: { color: "#F26722" },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on("payment.failed", (resp) => {
+        console.error(resp);
+        alert("❌ Payment failed. Please try again.");
+      });
+      rzp.open();
+
+    } catch (err) {
+      console.error(err);
+      alert(err?.message || "Something went wrong. Please try again.");
+    } finally {
+      setOrderLoading(false);
+    }
+  };
 
   return (
     <div className="buy-overlay" onMouseDown={safeClose}>
@@ -471,7 +482,7 @@ const handleSubmit = async () => {
           </button>
           <button className="buy-btn buy-primary" onClick={handleSubmit} disabled={orderLoading}>
             {orderLoading
-              ? "Processing..."
+              ? loadingMsg
               : serverTotal != null
               ? `Pay ₹${Number(serverTotal).toFixed(2)}`
               : "Proceed to Pay"}
