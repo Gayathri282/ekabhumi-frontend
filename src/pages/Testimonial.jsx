@@ -6,17 +6,15 @@ import { googleLogin, hasSession } from "../api/authAPI";
 const API_BASE = process.env.REACT_APP_API_URL || "https://ekb-backend.onrender.com";
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
-// ── hardcoded fallback testimonials (always shown) ────────────────────────────
 const STATIC_TESTIMONIALS = [
-  { id: "s1", user_name: "Priya Sharma", role: "Using for 6 months", text: "After struggling with hair fall for years, Redensyl has been a game-changer.", rating: 5, image: "testimonial1.jpg" },
-  { id: "s2", user_name: "Rahul Mehta", role: "Customer for 1 year", text: "Natural ingredients and visible results within weeks. Highly recommended!", rating: 5, image: "testimonial2.jpg" },
-  { id: "s3", user_name: "Anjali Patel", role: "Professional Stylist", text: "I recommend Eka Bhumi products to all my clients.", rating: 4, image: "testimonial3.jpg" },
-  { id: "s4", user_name: "Sanjay Kumar", role: "Using for 8 months", text: "Finally found a solution for my dandruff problem.", rating: 5, image: "testimonial4.jpg" },
-  { id: "s5", user_name: "Meera Nair", role: "Customer for 2 years", text: "From hair loss to healthy growth — incredible transformation.", rating: 5, image: "testimonial5.jpg" },
-  { id: "s6", user_name: "Vikram Singh", role: "First-time user", text: "Impressed with the results in just 3 months.", rating: 4, image: "testimonial6.jpg" },
+  { id: "s1", user_name: "Priya Sharma",  role: "Using for 6 months",    text: "After struggling with hair fall for years, Redensyl has been a game-changer.", rating: 5, image: "testimonial1.jpg" },
+  { id: "s2", user_name: "Rahul Mehta",   role: "Customer for 1 year",   text: "Natural ingredients and visible results within weeks. Highly recommended!", rating: 5, image: "testimonial2.jpg" },
+  { id: "s3", user_name: "Anjali Patel",  role: "Professional Stylist",  text: "I recommend Eka Bhumi products to all my clients.", rating: 4, image: "testimonial3.jpg" },
+  { id: "s4", user_name: "Sanjay Kumar",  role: "Using for 8 months",    text: "Finally found a solution for my dandruff problem.", rating: 5, image: "testimonial4.jpg" },
+  { id: "s5", user_name: "Meera Nair",    role: "Customer for 2 years",  text: "From hair loss to healthy growth — incredible transformation.", rating: 5, image: "testimonial5.jpg" },
+  { id: "s6", user_name: "Vikram Singh",  role: "First-time user",       text: "Impressed with the results in just 3 months.", rating: 4, image: "testimonial6.jpg" },
 ];
 
-// ── helpers ───────────────────────────────────────────────────────────────────
 function StarRow({ rating, interactive = false, onRate = (_n) => {} }) {
   return (
     <div className="t-stars">
@@ -34,41 +32,30 @@ function StarRow({ rating, interactive = false, onRate = (_n) => {} }) {
   );
 }
 
-function initGoogle(callback) {
-  if (!GOOGLE_CLIENT_ID || !window.google?.accounts?.id) return;
-  window.google.accounts.id.initialize({
-    client_id: GOOGLE_CLIENT_ID,
-    callback: (resp) => callback(resp.credential),
-    auto_select: false,
-    cancel_on_tap_outside: true,
-  });
-}
-
-// ── main component ────────────────────────────────────────────────────────────
 const Testimonial = () => {
-  const trackRef = useRef(null);
+  const trackRef     = useRef(null);
   const googleBtnRef = useRef(null);
 
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(true);
-
-  // API reviews
   const [apiReviews, setApiReviews] = useState([]);
 
-  // auth
-  const [isLoggedIn, setIsLoggedIn] = useState(() => hasSession());
+  // ── auth ────────────────────────────────────────────────────────────────────
+  const [isLoggedIn, setIsLoggedIn]     = useState(() => hasSession());
   const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError]     = useState("");
 
-  // review modal
-  const [showModal, setShowModal] = useState(false);
-  const [pendingOpen, setPendingOpen] = useState(false); // open after login
-  const [rating, setRating] = useState(5);
-  const [reviewText, setReviewText] = useState("");
+  // ── modal ───────────────────────────────────────────────────────────────────
+  const [showModal, setShowModal]         = useState(false);
+  const [rating, setRating]               = useState(5);
+  const [reviewText, setReviewText]       = useState("");
   const [submitLoading, setSubmitLoading] = useState(false);
-  const [submitMsg, setSubmitMsg] = useState("");
-  const [loginError, setLoginError] = useState("");
+  const [submitMsg, setSubmitMsg]         = useState("");
 
-  // merge static + api reviews
+  // ── use a ref for isLoggedIn so handleCredential always has latest value ────
+  const isLoggedInRef = useRef(isLoggedIn);
+  useEffect(() => { isLoggedInRef.current = isLoggedIn; }, [isLoggedIn]);
+
   const allTestimonials = useMemo(() => {
     const dynamic = apiReviews.map((r) => ({
       id: `api_${r.id}`,
@@ -81,7 +68,7 @@ const Testimonial = () => {
     return [...dynamic, ...STATIC_TESTIMONIALS];
   }, [apiReviews]);
 
-  // ── fetch approved reviews ─────────────────────────────────────────────────
+  // ── fetch approved reviews ──────────────────────────────────────────────────
   useEffect(() => {
     fetch(`${API_BASE}/reviews`)
       .then((r) => r.json())
@@ -89,7 +76,7 @@ const Testimonial = () => {
       .then((data) => setApiReviews(Array.isArray(data) ? data : []));
   }, []);
 
-  // ── carousel scroll tracking ───────────────────────────────────────────────
+  // ── carousel ────────────────────────────────────────────────────────────────
   const updateButtons = useCallback(() => {
     const el = trackRef.current;
     if (!el) return;
@@ -119,9 +106,35 @@ const Testimonial = () => {
     el.scrollBy({ left: dir === "next" ? step : -step, behavior: "smooth" });
   };
 
-  // ── Google init ────────────────────────────────────────────────────────────
+  // ── Google credential handler (uses ref — no stale closure) ────────────────
+  const handleCredential = useCallback(async (googleIdToken) => {
+    setLoginLoading(true);
+    setLoginError("");
+    try {
+      await googleLogin(googleIdToken);
+      setIsLoggedIn(true);
+      isLoggedInRef.current = true;
+      window.google?.accounts?.id?.cancel();
+      // Modal is already open — just re-render to show review form
+    } catch (e) {
+      setLoginError(e?.message || "Login failed");
+    } finally {
+      setLoginLoading(false);
+    }
+  }, []);
+
+  // ── init Google once ────────────────────────────────────────────────────────
   useEffect(() => {
-    const init = () => initGoogle(handleCredential);
+    const init = () => {
+      if (!GOOGLE_CLIENT_ID || !window.google?.accounts?.id) return;
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: (resp) => handleCredential(resp.credential),
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+    };
+
     if (window.google?.accounts?.id) { init(); return; }
     const existing = document.querySelector('script[src*="accounts.google.com/gsi/client"]');
     if (!existing) {
@@ -133,9 +146,9 @@ const Testimonial = () => {
     } else {
       existing.addEventListener("load", init);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [handleCredential]);
 
-  // ── render Google button when modal opens for non-logged-in user ───────────
+  // ── render Google button whenever modal is open and user not logged in ──────
   useEffect(() => {
     if (!showModal || isLoggedIn) return;
     if (!googleBtnRef.current || !window.google?.accounts?.id) return;
@@ -147,48 +160,36 @@ const Testimonial = () => {
     return () => clearTimeout(t);
   }, [showModal, isLoggedIn]);
 
-  const handleCredential = useCallback(async (googleIdToken) => {
-    setLoginLoading(true);
-    setLoginError("");
-    try {
-      await googleLogin(googleIdToken);
-      setIsLoggedIn(true);
-      window.google?.accounts?.id?.cancel();
-      if (pendingOpen) {
-        setPendingOpen(false);
-        setShowModal(true);
+  // ── poll for login in case storage event doesn't fire ──────────────────────
+  useEffect(() => {
+    if (!showModal || isLoggedIn) return;
+    const interval = setInterval(() => {
+      if (hasSession()) {
+        setIsLoggedIn(true);
+        clearInterval(interval);
       }
-    } catch (e) {
-      setLoginError(e?.message || "Login failed");
-    } finally {
-      setLoginLoading(false);
-    }
-  }, [pendingOpen]);
+    }, 500);
+    return () => clearInterval(interval);
+  }, [showModal, isLoggedIn]);
 
   const openReviewModal = () => {
     setSubmitMsg("");
     setLoginError("");
     setRating(5);
     setReviewText("");
-
-    if (!isLoggedIn) {
-      setPendingOpen(true);
-      setShowModal(true); // show modal with login UI
-      // trigger One Tap
-      window.google?.accounts?.id?.prompt((n) => {
-        if (n.isNotDisplayed() || n.isSkippedMoment()) {
-          // fallback: Google button rendered in modal
-        }
-      });
-      return;
-    }
     setShowModal(true);
+
+    // Trigger One Tap if not logged in
+    if (!hasSession()) {
+      setTimeout(() => {
+        window.google?.accounts?.id?.prompt((n) => {
+          // fallback to button in modal if One Tap not shown
+        });
+      }, 300);
+    }
   };
 
-  const closeModal = () => {
-    setShowModal(false);
-    setPendingOpen(false);
-  };
+  const closeModal = () => setShowModal(false);
 
   const submitReview = async () => {
     if (!reviewText.trim()) { setSubmitMsg("Please write something."); return; }
@@ -257,7 +258,6 @@ const Testimonial = () => {
                   <div className="quote-icon">"</div>
                   <p className="testimonial-text">{t.text}</p>
                 </div>
-
                 <div className="testimonial-author">
                   <div className="author-image">
                     {t.image ? (
@@ -293,7 +293,6 @@ const Testimonial = () => {
           </button>
         </div>
 
-        {/* Write a review CTA */}
         <div className="testimonial-cta">
           <button className="write-review-btn" onClick={openReviewModal} type="button">
             ✍️ Write a Review
@@ -305,23 +304,35 @@ const Testimonial = () => {
       {showModal && (
         <div className="review-overlay" onMouseDown={closeModal}>
           <div className="review-modal" onMouseDown={(e) => e.stopPropagation()}>
-            <button className="review-close" onClick={closeModal} aria-label="Close"><X size={18} /></button>
+            <button className="review-close" onClick={closeModal} aria-label="Close">
+              <X size={18} />
+            </button>
 
             <h3 className="review-modal-title">Share Your Experience</h3>
 
-            {/* Not logged in yet */}
             {!isLoggedIn ? (
+              /* ── Login gate ── */
               <div className="review-login-gate">
+                <div style={{
+                  width: 56, height: 56, borderRadius: "50%",
+                  background: "#fff3ec", margin: "0 auto 16px",
+                  display: "flex", alignItems: "center",
+                  justifyContent: "center", fontSize: 26,
+                }}>
+                  ✍️
+                </div>
                 <p className="review-login-hint">
-                  Sign in with Google to leave a review.<br />
+                  Sign in with Google to leave a review.
+                  <br />
                   <span className="review-login-sub">Only verified buyers can submit reviews.</span>
                 </p>
                 {loginLoading && <p className="review-login-loading">Signing you in…</p>}
-                {loginError && <p className="review-login-error">{loginError}</p>}
-                <div ref={googleBtnRef} style={{ marginTop: 12 }} />
+                {loginError  && <p className="review-login-error">{loginError}</p>}
+                {/* Google Sign In button renders here */}
+                <div ref={googleBtnRef} style={{ marginTop: 16, display: "flex", justifyContent: "center" }} />
               </div>
             ) : (
-              /* Logged in — show form */
+              /* ── Review form ── */
               <>
                 <div className="review-field">
                   <label className="review-label">Your Rating</label>
