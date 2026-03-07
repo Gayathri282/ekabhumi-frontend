@@ -236,9 +236,7 @@ body{
   box-shadow:0 22px 45px rgba(242,103,34,.55);
 }
 
-/* mobile hero elements hidden on desktop */
-.hero-mobile-wrap{ display:none; }
-.hero-mobile-img{ display:none; }
+/* hero-mobile-wrap and hero-mobile-img not used in JSX */
 
 /* ===================== PRODUCTS ===================== */
 .product-preview{
@@ -570,68 +568,36 @@ body{
     border-radius:999px;
   }
 
-  /* ✅ HERO (mobile) — locked to viewport, no scroll needed */
+  /* ✅ HERO (mobile) — uses same <picture><img> as desktop, just different src */
   .hero{
-    background-image:none !important;
+    /* portrait image is taller — limit to 75vh so button is always visible */
+    height:75vh !important;
     margin-top:80px !important;
     padding:0 !important;
-    min-height:auto !important;
-    height:auto !important;
-    overflow:visible !important;
+    overflow:hidden !important;
     background:#f7ede4 !important;
   }
 
-  .hero-mobile-wrap{
-    display:block !important;
-    width:100% !important;
-    position:relative !important;
-    height:auto !important;
-    margin:0 !important;
-    padding:0 0 70px 0 !important;
-    background:#f7ede4 !important;
-    overflow:visible !important;
-  }
-
-  /* ✅ Image — shorter height, no cropping */
-  .hero-mobile-img{
-    display:block !important;
-    width:100% !important;
-    height:75vh !important;
-    max-height:75vh !important;
+  /* The <img> inside <picture> — contain shows full portrait image, no cropping */
+  .hero-img{
     object-fit:contain !important;
     object-position:center top !important;
-    margin:0 !important;
-    padding:0 !important;
-    vertical-align:top !important;
-    background:#f7ede4 !important;
   }
 
-  .hero-cta.mobile-cta{
-    display:flex !important;
-    position:relative !important;
-    left:auto !important;
-    transform:none !important;
-    bottom:auto !important;
-    margin-top:-50px !important;
-    width:100% !important;
-    justify-content:center !important;
-    align-items:center !important;
-    z-index:4 !important;
-    pointer-events:none !important;
-    margin:0 !important;
-    padding:0 12px !important;
+  /* Button — positioned near bottom of the 75vh hero */
+  .hero-cta{
+    bottom:16px !important;
   }
 
-  .hero-cta.mobile-cta .primary-btn,
+  /* ✅ Smaller, well-proportioned button on mobile */
   .hero-cta .primary-btn{
-    pointer-events:auto !important;
-    margin:0 !important;
-    padding:16px 48px !important;
-    font-size:17px !important;
+    padding:14px 40px !important;
+    font-size:16px !important;
     font-weight:900 !important;
     border-radius:50px !important;
-    letter-spacing:1px !important;
+    letter-spacing:0.8px !important;
     box-shadow:0 10px 24px rgba(242,103,34,.40) !important;
+    pointer-events:auto !important;
   }
 
   /* PRODUCTS (mobile) */
@@ -653,10 +619,13 @@ body{
 
   .product-image{
     width:100% !important;
-    height:310px !important;
+    height:100% !important;
     object-fit:cover !important;
     object-position:center !important;
     display:block !important;
+    position:absolute !important;
+    top:0 !important;
+    left:0 !important;
   }
 
   .product-card::after{ height:95px !important; }
@@ -679,21 +648,19 @@ body{
   }
 }
 
-/* ✅ Small phones (≤480px) — keep contain so full image shows */
+/* ✅ Small phones (≤480px) */
 @media (max-width:480px){
-  .hero-mobile-img{
-    object-fit:contain !important;
-    object-position:center top !important;
+  .hero{
+    height:72vh !important;
   }
 
-  .hero-cta.mobile-cta .primary-btn,
   .hero-cta .primary-btn{
-    padding:8px 22px !important;
-    font-size:12px !important;
+    padding:12px 32px !important;
+    font-size:14px !important;
   }
 
   .product-card{ height:410px !important; }
-  .product-image{ height:300px !important; }
+  .product-image{ height:100% !important; }
 }
 
 /* ── Auth actions ── */
