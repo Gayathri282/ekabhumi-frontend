@@ -1,3 +1,4 @@
+//paged/adminblog.jsx
 import { useCallback, useEffect, useState } from "react";
 import styles from "./Dashboard.module.css";
 
