@@ -9,6 +9,7 @@ import { fetchProducts } from "../api/publicAPI";
 import { googleLogin, logout, hasSession, autoRefreshToken } from "../api/authAPI";
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+const API_BASE = process.env.REACT_APP_API_URL || "https://ekb-backend.onrender.com";
 
 function initGoogleOneTap(callback) {
   if (!GOOGLE_CLIENT_ID || !window.google?.accounts?.id) return;
@@ -30,6 +31,12 @@ const Home = () => {
   const [loading, setLoading]                     = useState(false);
   const [error, setError]                         = useState("");
 
+  // Hero banner state — falls back to local images if API has nothing yet
+  const [heroBanner, setHeroBanner] = useState({
+    desktop_image: "/images/hero-desktop.png",
+    mobile_image:  "/images/hero-mobile.png",
+  });
+
   const [products, setProducts] = useState(() => {
     try { const c = localStorage.getItem("cachedProducts"); return c ? JSON.parse(c) : []; }
     catch { return []; }
@@ -42,11 +49,28 @@ const Home = () => {
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const loginDropdownRef = useRef(null);
-  // googleBtnRef is NOT used for the desktop dropdown anymore — we use callback ref
   const trackRef         = useRef(null);
   const navigate         = useNavigate();
 
   const isAdmin = userData?.role === "admin";
+
+  // ── Hero banner fetch ─────────────────────────────────────────────────────
+  useEffect(() => {
+    fetch(`${API_BASE}/hero-banner`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        setHeroBanner({
+          desktop_image: data.desktop_image
+            ? (data.desktop_image.startsWith("http") ? data.desktop_image : `${API_BASE}${data.desktop_image}`)
+            : "/images/hero-desktop.png",
+          mobile_image: data.mobile_image
+            ? (data.mobile_image.startsWith("http") ? data.mobile_image : `${API_BASE}${data.mobile_image}`)
+            : "/images/hero-mobile.png",
+        });
+      })
+      .catch(() => {/* silently keep defaults */});
+  }, []);
 
   // ── Products ─────────────────────────────────────────────────────────────
   const sortedProducts = useMemo(() => {
@@ -102,9 +126,7 @@ const Home = () => {
 
   // Init Google SDK
   useEffect(() => {
-    // Silently refresh token if expiring within 7 days
     autoRefreshToken();
-
     const init = () => initGoogleOneTap(handleCredential);
     if (window.google?.accounts?.id) { init(); return; }
     const existing = document.querySelector('script[src*="accounts.google.com/gsi/client"]');
@@ -120,10 +142,8 @@ const Home = () => {
   }, [handleCredential]);
 
   // ── Callback ref: renders Google button the moment the div mounts ─────────
-  // This is the KEY fix — avoids the timing issue with AuthButton re-rendering
   const googleBtnCallbackRef = useCallback((el) => {
     if (!el || isLoggedIn || !window.google?.accounts?.id) return;
-    // Small delay to ensure Google SDK is fully ready
     setTimeout(() => {
       try {
         window.google.accounts.id.renderButton(el, {
@@ -205,8 +225,8 @@ const Home = () => {
   }, []);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
-  const handleImageError  = (e) => { e.target.onerror = null; e.target.src = "https://placehold.co/400x300/EEE/31343C?text=Product+Image"; };
-  const handleLogoError   = (e) => { e.target.onerror = null; e.target.src = "/images/logo-placeholder.png"; };
+  const handleImageError = (e) => { e.target.onerror = null; e.target.src = "https://placehold.co/400x300/EEE/31343C?text=Product+Image"; };
+  const handleLogoError  = (e) => { e.target.onerror = null; e.target.src = "/images/logo-placeholder.png"; };
 
   const goToPriorityOneProduct = () => {
     const top = sortedProducts.find(p => Number(p.priority) === 1) || sortedProducts[0];
@@ -234,7 +254,7 @@ const Home = () => {
       : <span style={{ fontWeight: 800, fontSize: 15 }}>{userInitial}</span>
   );
 
-  // ── Auth button — plain JSX, no sub-component (avoids ref destroy on re-render)
+  // ── Auth section ──────────────────────────────────────────────────────────
   const renderAuthSection = () => (
     <div className="auth-wrap" ref={loginDropdownRef}>
       {isLoggedIn ? (
@@ -273,7 +293,6 @@ const Home = () => {
         <div className="auth-dropdown">
           <div className="auth-dropdown-login">
             <p className="auth-dropdown-hint">Sign in to track your orders</p>
-            {/* callback ref: renders Google button immediately when div mounts */}
             <div ref={googleBtnCallbackRef} />
           </div>
         </div>
@@ -296,6 +315,9 @@ const Home = () => {
       )}
     </div>
   );
+
+  // ── Single product: true when no search is active and exactly 1 product total
+  const isSingleProduct = filteredProducts.length === 1;
 
   return (
     <>
@@ -383,18 +405,24 @@ const Home = () => {
         </div>
       )}
 
-      {/* HERO */}
+      {/* ── HERO ── */}
       <section id="home" className="hero">
         <picture className="hero-media">
-          <source media="(max-width: 992px)" srcSet="/images/hero-mobile.png" />
-          <img className="hero-img" src="/images/hero-desktop.png" alt="Eka Bhumih skincare hero banner" loading="eager" />
+          {/* Mobile image swaps at ≤768px */}
+          <source media="(max-width: 768px)" srcSet={heroBanner.mobile_image} />
+          <img
+            className="hero-img"
+            src={heroBanner.desktop_image}
+            alt="Eka Bhumih skincare hero banner"
+            loading="eager"
+          />
         </picture>
         <div className="hero-cta">
           <button className="primary-btn" onClick={goToPriorityOneProduct}>Shop Now</button>
         </div>
       </section>
 
-      {/* Products */}
+      {/* ── Products ── */}
       <section id="products" className="product-preview">
         <div className="search-wrap">
           <div className="search-box">
@@ -402,7 +430,13 @@ const Home = () => {
               <circle cx="11" cy="11" r="8" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
-            <input className="search-input" type="text" placeholder="Search products…" value={search} onChange={e => setSearch(e.target.value)} />
+            <input
+              className="search-input"
+              type="text"
+              placeholder="Search products…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
             {search && <button className="search-clear" onClick={() => setSearch("")} aria-label="Clear search">×</button>}
           </div>
         </div>
@@ -417,20 +451,35 @@ const Home = () => {
         )}
 
         {!loading && filteredProducts.length > 0 && (
-          <div className="carousel-container">
-            <button className="carousel-arrow prev" onClick={() => scrollCarousel("prev")} type="button" aria-label="Previous">‹</button>
+          // single-product class: centres card + hides arrows when only 1 product
+          <div className={`carousel-container${isSingleProduct ? " single-product" : ""}`}>
+            {!isSingleProduct && (
+              <button
+                className="carousel-arrow prev"
+                onClick={() => scrollCarousel("prev")}
+                type="button"
+                aria-label="Previous"
+              >‹</button>
+            )}
+
             <div className="carousel-track" ref={trackRef}>
               {filteredProducts.map(p => {
-                const qty         = Number(p.quantity ?? 0);
+                const qty           = Number(p.quantity ?? 0);
                 const availableSoon = qty <= 0;
                 return (
                   <div className="product-card" key={p.id}>
                     {availableSoon && <div className="available-soon-badge">Available Soon</div>}
-                    <img src={p.image_url} alt={p.name} className="product-image" onError={handleImageError} loading="lazy" />
+                    <img
+                      src={p.image_url}
+                      alt={p.name}
+                      className="product-image"
+                      onError={handleImageError}
+                      loading="lazy"
+                    />
                     <div className="product-info">
                       <span className="product-name">{p.name}</span>
                       <button
-                        className={`view-details-btn ${availableSoon ? "isDisabled" : ""}`}
+                        className={`view-details-btn${availableSoon ? " isDisabled" : ""}`}
                         onClick={() => { if (!availableSoon) navigate(`/products/${p.id}`); }}
                         type="button"
                         disabled={availableSoon}
@@ -443,7 +492,15 @@ const Home = () => {
                 );
               })}
             </div>
-            <button className="carousel-arrow next" onClick={() => scrollCarousel("next")} type="button" aria-label="Next">›</button>
+
+            {!isSingleProduct && (
+              <button
+                className="carousel-arrow next"
+                onClick={() => scrollCarousel("next")}
+                type="button"
+                aria-label="Next"
+              >›</button>
+            )}
           </div>
         )}
       </section>

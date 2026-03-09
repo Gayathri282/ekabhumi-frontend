@@ -8,6 +8,7 @@ import Orders from "./Orders";
 import UpdateProduct from "./UpdateProduct";
 import Reviews from "./Reviews";
 import AdminBlogs from "./AdminBlogs";
+import AdminHeroBanner from "./AdminHeroBanner";
 
 const TABS = [
   { key: "orders",      label: "Pending Orders",  icon: "⏳" },
@@ -16,11 +17,12 @@ const TABS = [
   { key: "addProduct",  label: "Add Product",      icon: "➕" },
   { key: "reviews",     label: "Reviews",          icon: "💬" },
   { key: "blogs",       label: "Blogs",            icon: "📝" },
+  { key: "heroBanner",  label: "Hero Banner",      icon: "🖼️" },
 ];
 
 function AdminDashboard() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab]   = useState("orders");
+  const [activeTab, setActiveTab]     = useState("orders");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const [products, setProducts]               = useState([]);
@@ -46,7 +48,7 @@ function AdminDashboard() {
     () => process.env.REACT_APP_API_URL || "https://ekb-backend.onrender.com", []
   );
 
-  const [approvedSelected, setApprovedSelected]   = useState(() => new Set());
+  const [approvedSelected, setApprovedSelected]     = useState(() => new Set());
   const [clearedApprovedIds, setClearedApprovedIds] = useState(() => {
     try { return JSON.parse(localStorage.getItem("clearedApprovedIds") || "[]"); }
     catch { return []; }
@@ -226,11 +228,11 @@ function AdminDashboard() {
     );
   }, [products, searchProducts]);
 
-  const toggleApprovedSelect   = (id) => setApprovedSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const clearSelectedApproved  = () => { setClearedApprovedIds(prev => [...new Set([...prev, ...approvedSelected])]); setApprovedSelected(new Set()); };
-  const clearAllApproved       = () => { setClearedApprovedIds(prev => [...new Set([...prev, ...approvedOrders.map(o => o.id)])]); setApprovedSelected(new Set()); };
-  const restoreApproved        = () => { setClearedApprovedIds([]); setApprovedSelected(new Set()); };
-  const openUpdate             = (p) => { setSelectedProduct(p); setActiveTab("updateProduct"); };
+  const toggleApprovedSelect  = (id) => setApprovedSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const clearSelectedApproved = () => { setClearedApprovedIds(prev => [...new Set([...prev, ...approvedSelected])]); setApprovedSelected(new Set()); };
+  const clearAllApproved      = () => { setClearedApprovedIds(prev => [...new Set([...prev, ...approvedOrders.map(o => o.id)])]); setApprovedSelected(new Set()); };
+  const restoreApproved       = () => { setClearedApprovedIds([]); setApprovedSelected(new Set()); };
+  const openUpdate            = (p) => { setSelectedProduct(p); setActiveTab("updateProduct"); };
 
   const tabTitle = TABS.find(t => t.key === activeTab)?.label || (activeTab === "updateProduct" ? "Update Product" : "");
 
@@ -495,6 +497,15 @@ function AdminDashboard() {
             <div className={styles.section}>
               <div className={styles.card}>
                 <AdminBlogs />
+              </div>
+            </div>
+          )}
+
+          {/* ── Hero Banner ── */}
+          {activeTab === "heroBanner" && (
+            <div className={styles.section}>
+              <div className={styles.card}>
+                <AdminHeroBanner setError={setError} />
               </div>
             </div>
           )}
