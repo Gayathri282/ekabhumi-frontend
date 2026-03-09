@@ -178,27 +178,31 @@ body{
 */
 .hero{
   width:100%;
-  /* sits right below the 80px fixed navbar */
   margin-top:80px;
-  padding:0;                    /* ← removes any yellow side padding */
+  padding:0;
   position:relative;
   overflow:hidden;
-  background:#fff;              /* neutral — only visible before image loads */
+  background:#fff;
   isolation:isolate;
   z-index:0;
-  line-height:0;                /* ← kills inline whitespace gap below <picture> */
+  line-height:0;
+  /* Never taller than the visible viewport below the navbar */
+  max-height:calc(100vh - 80px);
 }
 
 .hero-media{
   display:block;
   width:100%;
-  line-height:0;                /* belt-and-suspenders for inline gap */
+  height:100%;
+  line-height:0;
 }
 
 .hero-img{
-  display:block;                /* removes default inline baseline gap */
+  display:block;
   width:100%;
-  height:auto;                  /* natural height — no fixed clamp that could show bg */
+  /* Fill the capped container — image crops rather than overflows */
+  height:100%;
+  max-height:calc(100vh - 80px);
   object-fit:cover;
   object-position:center center;
   padding:0;
@@ -632,17 +636,20 @@ body{
     border-radius:999px;
   }
 
-  /* Hero on mobile: let the image define its own height naturally */
+  /* Hero on mobile: cap to visible viewport, never needs scrolling */
   .hero{
     margin-top:80px !important;
     padding:0 !important;
     background:#fff !important;
     line-height:0 !important;
+    /* 100svh = viewport minus browser chrome on mobile */
+    max-height:calc(100svh - 80px) !important;
   }
 
   .hero-img{
     width:100% !important;
-    height:auto !important;
+    height:100% !important;
+    max-height:calc(100svh - 80px) !important;
     object-fit:cover !important;
     object-position:center top !important;
     display:block !important;
@@ -722,6 +729,7 @@ body{
     padding:12px 32px !important;
     font-size:14px !important;
   }
+  /* hero height already capped by max-height in the ≤992px block — no override needed */
   .product-card{ height:410px !important; }
 }
 
