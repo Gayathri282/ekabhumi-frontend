@@ -7,6 +7,7 @@ import Testimonial from "./Testimonial";
 import Footer from "./Footer";
 import { fetchProducts } from "../api/publicAPI";
 import { googleLogin, logout, hasSession, autoRefreshToken } from "../api/authAPI";
+import ProductSection from "./ProductSection";
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 const API_BASE = process.env.REACT_APP_API_URL || "https://ekb-backend.onrender.com";
@@ -49,7 +50,6 @@ const Home = () => {
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const loginDropdownRef = useRef(null);
-  const trackRef         = useRef(null);
   const navigate         = useNavigate();
 
   const isAdmin = userData?.role === "admin";
@@ -225,22 +225,12 @@ const Home = () => {
   }, []);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
-  const handleImageError = (e) => { e.target.onerror = null; e.target.src = "https://placehold.co/400x300/EEE/31343C?text=Product+Image"; };
   const handleLogoError  = (e) => { e.target.onerror = null; e.target.src = "/images/logo-placeholder.png"; };
 
   const goToPriorityOneProduct = () => {
     const top = sortedProducts.find(p => Number(p.priority) === 1) || sortedProducts[0];
     if (top?.id) navigate(`/products/${top.id}`);
     else document.getElementById("products")?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const scrollCarousel = (dir) => {
-    const el = trackRef.current;
-    if (!el) return;
-    const card = el.querySelector(".product-card");
-    const gap  = 16;
-    const step = card ? card.getBoundingClientRect().width + gap : el.clientWidth * 0.85;
-    el.scrollBy({ left: dir === "next" ? step : -step, behavior: "smooth" });
   };
 
   const userEmail   = userData?.email   || "";
@@ -315,9 +305,6 @@ const Home = () => {
       )}
     </div>
   );
-
-  // ── Single product: true when no search is active and exactly 1 product total
-  const isSingleProduct = filteredProducts.length === 1;
 
   return (
     <>
@@ -423,87 +410,15 @@ const Home = () => {
       </section>
 
       {/* ── Products ── */}
-      <section id="products" className="product-preview">
-        <div className="search-wrap">
-          <div className="search-box">
-            <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              className="search-input"
-              type="text"
-              placeholder="Search products…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-            {search && <button className="search-clear" onClick={() => setSearch("")} aria-label="Clear search">×</button>}
-          </div>
-        </div>
-
-        {error   && <div className="error-message">⚠️ {error}</div>}
-        {loading && <p className="loading-text">Loading products...</p>}
-
-        {!loading && filteredProducts.length === 0 && !error && (
-          <p style={{ textAlign: "center", color: "#666" }}>
-            {search ? `No products found for "${search}"` : "No products available"}
-          </p>
-        )}
-
-        {!loading && filteredProducts.length > 0 && (
-          // single-product class: centres card + hides arrows when only 1 product
-          <div className={`carousel-container${isSingleProduct ? " single-product" : ""}`}>
-            {!isSingleProduct && (
-              <button
-                className="carousel-arrow prev"
-                onClick={() => scrollCarousel("prev")}
-                type="button"
-                aria-label="Previous"
-              >‹</button>
-            )}
-
-            <div className="carousel-track" ref={trackRef}>
-              {filteredProducts.map(p => {
-                const qty           = Number(p.quantity ?? 0);
-                const availableSoon = qty <= 0;
-                return (
-                  <div className="product-card" key={p.id}>
-                    {availableSoon && <div className="available-soon-badge">Available Soon</div>}
-                    <img
-                      src={p.image_url}
-                      alt={p.name}
-                      className="product-image"
-                      onError={handleImageError}
-                      loading="lazy"
-                    />
-                    <div className="product-info">
-                      <span className="product-name">{p.name}</span>
-                      <button
-                        className={`view-details-btn${availableSoon ? " isDisabled" : ""}`}
-                        onClick={() => { if (!availableSoon) navigate(`/products/${p.id}`); }}
-                        type="button"
-                        disabled={availableSoon}
-                        title={availableSoon ? "Available soon" : "View details"}
-                      >
-                        View Details
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {!isSingleProduct && (
-              <button
-                className="carousel-arrow next"
-                onClick={() => scrollCarousel("next")}
-                type="button"
-                aria-label="Next"
-              >›</button>
-            )}
-          </div>
-        )}
-      </section>
+      <ProductSection
+        products={filteredProducts}
+        loading={loading}
+        error={error}
+        search={search}
+        onSearch={setSearch}
+        onNavigate={navigate}
+        isLoggedIn={isLoggedIn}
+      />
 
       <section id="about"        className="pageSection"><About /></section>
       <Blog />
