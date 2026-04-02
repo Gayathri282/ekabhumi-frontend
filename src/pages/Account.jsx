@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchMyOrders, fetchOrderByToken, fetchProducts } from "../api/publicAPI";
+import PublicNavbar from "../components/PublicNavbar";
+import Footer from "./Footer";
 import "./Account.css";
 
 /* ── helpers ── */
@@ -457,6 +459,8 @@ export default function Account() {
 
   return (
     <div className="ac-page">
+      <PublicNavbar />
+
       <header className="ac-topbar">
         <button className="ac-back-btn" onClick={() => navigate("/")}>
           ← Home
@@ -615,6 +619,7 @@ export default function Account() {
       </div>
 
       {selected && <OrderSheet order={selected} onClose={() => setSelected(null)} />}
+      <Footer />
     </div>
   );
 }
