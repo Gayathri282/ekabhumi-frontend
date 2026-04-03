@@ -8,27 +8,36 @@ const toNumber = (value) => {
 const roundToNearestTen = (value) => Math.max(0, Math.round(value / 10) * 10);
 
 export function getProductPricing(product) {
-  const basePrice = toNumber(
-    product?.original_price
-    ?? product?.selling_price
+  const mrpPrice = toNumber(
+    product?.mrp
+    ?? product?.original_price
     ?? product?.compare_at_price
-    ?? product?.mrp
     ?? product?.list_price
-    ?? product?.price
   );
 
-  const explicitOffer = toNumber(
-    product?.offer_price
+  const sellingPrice = toNumber(
+    product?.selling_price
+    ?? product?.offer_price
     ?? product?.sale_price
     ?? product?.discount_price
   );
+
+  const fallbackBasePrice = toNumber(
+    product?.price
+    ?? product?.selling_price
+    ?? product?.mrp
+    ?? product?.original_price
+  );
+
+  const hasRealPricePair = mrpPrice > 0 && sellingPrice > 0;
+  const basePrice = hasRealPricePair ? Math.max(mrpPrice, sellingPrice) : fallbackBasePrice;
 
   const derivedOffer = basePrice > 0
     ? roundToNearestTen(basePrice * (1 - DEFAULT_DISCOUNT_RATE))
     : 0;
 
-  const offerPrice = explicitOffer > 0 && explicitOffer < basePrice
-    ? explicitOffer
+  const offerPrice = hasRealPricePair
+    ? sellingPrice
     : derivedOffer > 0 && derivedOffer < basePrice
       ? derivedOffer
       : basePrice;
