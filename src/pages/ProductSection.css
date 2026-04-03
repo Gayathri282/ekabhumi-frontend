@@ -401,6 +401,39 @@
   font-weight: 600;
 }
 
+.feature-single__price-meta,
+.feature-grid-card__price-row,
+.ps-carousel-card__price-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.feature-single__price-original,
+.feature-grid-card__price-original,
+.ps-carousel-card__price-original {
+  color: rgba(22, 56, 41, 0.54);
+  font-size: 0.85rem;
+  text-decoration: line-through;
+}
+
+.feature-single__discount,
+.feature-grid-card__discount,
+.ps-carousel-card__discount {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(201, 152, 58, 0.15);
+  color: #9a6712;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .feature-single__btn,
 .feature-grid-card__btn,
 .ps-carousel-card__btn {
