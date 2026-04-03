@@ -494,8 +494,8 @@ body::before {
   position: relative;
   min-height: 100vh;
   padding: 132px 0 86px;
-  background:
-    linear-gradient(90deg, rgba(248, 244, 238, 0.92) 0%, rgba(248, 244, 238, 0.76) 40%, rgba(248, 244, 238, 0.44) 66%, rgba(248, 244, 238, 0.3) 100%);
+  /* background:
+    linear-gradient(90deg, rgba(248, 244, 238, 0.92) 0%, rgba(248, 244, 238, 0.76) 40%, rgba(248, 244, 238, 0.44) 66%, rgba(248, 244, 238, 0.3) 100%); */
   display: flex;
   align-items: center;
 }
@@ -563,7 +563,7 @@ body::before {
   margin: 0 0 30px;
   font-size: 16px;
   line-height: 1.8;
-  color: #4f6157;
+  color: #000000;
 }
 
 .hero-cta-row {

@@ -36,7 +36,7 @@ const Footer = () => {
       <div className="footer-strip">
         <div className="footer-strip__brand">
           <img src="/images/logo-white.png" alt="Eka Bhumih" className="footer-brand-logo" />
-          <span className="footer-copy">Copyright {new Date().getFullYear()} Ekabhumih</span>
+          {/* <span className="footer-copy">Copyright {new Date().getFullYear()} Ekabhumih</span> */}
         </div>
 
         <div className="footer-strip__contact">

@@ -32,7 +32,7 @@ function FeatureSingle({ product, goProduct }) {
   return (
     <article className="feature-single">
       <div className="feature-single__img-pane">
-        <img src={resolveImg(product)} alt={product.name} onError={imgFallback} />
+        <img src="/images/ro.png" alt={product.name} onError={imgFallback} />
         <div className="feature-single__badges">
           <span className="ps-status-badge ps-status-badge--accent">Best Pick</span>
           {soon && <span className="ps-status-badge ps-status-badge--muted">Available Soon</span>}

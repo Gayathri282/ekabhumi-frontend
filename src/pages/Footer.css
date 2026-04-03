@@ -32,9 +32,8 @@
   max-width: 1320px;
   margin: 0 auto;
   padding: 26px 28px;
-  display: grid;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: 20px 30px;
   flex-wrap: wrap;
 }
