@@ -519,7 +519,7 @@ body::before {
     border-radius: 34px;
     background: rgba(255, 255, 255, 0.076);
     border: 1px solid rgba(27, 67, 50, 0.02);
-    backdrop-filter: blur(7px);
+    backdrop-filter: blur(12px);
     box-shadow: 0 24px 60px rgba(27, 67, 50, 0.12);
 }
 

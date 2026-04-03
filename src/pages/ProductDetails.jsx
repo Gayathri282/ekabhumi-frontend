@@ -54,40 +54,6 @@ const PRODUCT_BADGES = [
   "Premium everyday care",
 ];
 
-const FALLBACK_GALLERY_IMAGES = [
-  "/images/redensyl-productimg.png",
-  "/images/redensyl-hero.png",
-];
-
-const parseGalleryField = (value) => {
-  if (!value) return [];
-  if (Array.isArray(value)) return value.flatMap(parseGalleryField);
-
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed) return [];
-
-    if (trimmed.startsWith("[")) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        return Array.isArray(parsed) ? parsed.flatMap(parseGalleryField) : [];
-      } catch {
-        return trimmed
-          .split(",")
-          .map((item) => item.trim())
-          .filter(Boolean);
-      }
-    }
-
-    return trimmed
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean);
-  }
-
-  return [];
-};
-
 const ProductDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -97,7 +63,6 @@ const ProductDetails = () => {
   const [error, setError] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [showBuy, setShowBuy] = useState(false);
-  const [selectedImage, setSelectedImage] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -130,12 +95,15 @@ const ProductDetails = () => {
     window.dispatchEvent(new Event("cart:updated"));
   };
 
+<<<<<<< HEAD
   const pricing = useMemo(() => getProductPricing(product), [product]);
   const currentPrice = pricing.offerPrice;
   const originalPrice = pricing.basePrice;
   const savingsAmount = pricing.savings;
   const discountPercent = pricing.discountPercent;
 
+=======
+>>>>>>> parent of 1362c51 (updated product details page)
   const addToCart = () => {
     if (!product) return;
     const cart = getCart();
@@ -150,9 +118,13 @@ const ProductDetails = () => {
         : [...cart, {
           id: product.id,
           name: product.name,
+<<<<<<< HEAD
           price: currentPrice,
           original_price: originalPrice,
           offer_price: currentPrice,
+=======
+          price: product.price,
+>>>>>>> parent of 1362c51 (updated product details page)
           image_url: product.image_url,
           qty: quantity,
         }]
@@ -165,39 +137,8 @@ const ProductDetails = () => {
     e.target.src = "https://placehold.co/900x900/EDF5EF/1B4332?text=Product";
   };
 
-  const totalPrice = useMemo(() => currentPrice * quantity, [currentPrice, quantity]);
+  const totalPrice = useMemo(() => Number(product?.price || 0) * quantity, [product, quantity]);
   const isAvailableSoon = Number(product?.quantity ?? 0) <= 0;
-  const galleryImages = useMemo(() => {
-    const candidates = [
-      ...parseGalleryField(product?.image_url),
-      ...parseGalleryField(product?.gallery_images),
-      ...parseGalleryField(product?.image_urls),
-      ...parseGalleryField(product?.images),
-      ...parseGalleryField(product?.gallery),
-      ...parseGalleryField(product?.extra_images),
-    ].filter(Boolean);
-
-    const uniqueImages = [];
-    const seen = new Set();
-
-    candidates.forEach((image) => {
-      if (!seen.has(image)) {
-        seen.add(image);
-        uniqueImages.push(image);
-      }
-    });
-
-    if (uniqueImages.length <= 1) {
-      FALLBACK_GALLERY_IMAGES.forEach((image) => {
-        if (!seen.has(image)) {
-          seen.add(image);
-          uniqueImages.push(image);
-        }
-      });
-    }
-
-    return uniqueImages.slice(0, 5);
-  }, [product]);
   const shortDescription = useMemo(() => {
     if (!product?.description) {
       return "A refined botanical formula designed to bring more clarity and calm to everyday hair care.";
@@ -209,10 +150,6 @@ const ProductDetails = () => {
 
   const decQty = () => setQuantity((p) => Math.max(1, p - 1));
   const incQty = () => setQuantity((p) => p + 1);
-
-  useEffect(() => {
-    setSelectedImage(galleryImages[0] || "");
-  }, [galleryImages, product?.id]);
 
   if (loading) {
     return (
@@ -258,37 +195,13 @@ const ProductDetails = () => {
                   {isAvailableSoon ? "Available Soon" : "Ready to order"}
                 </span>
               </div>
-              <div className="pd-image-stage">
-                <img
-                  src={selectedImage || product.image_url}
-                  alt={product.name}
-                  className="pd-image"
-                  onError={handleImageError}
-                  loading="eager"
-                />
-              </div>
-
-              {galleryImages.length > 1 && (
-                <div className="pd-gallery-strip" aria-label="Product image gallery">
-                  {galleryImages.map((image, index) => (
-                    <button
-                      key={`${image}-${index}`}
-                      type="button"
-                      className={`pd-gallery-thumb ${selectedImage === image ? "is-active" : ""}`}
-                      onClick={() => setSelectedImage(image)}
-                      aria-label={`View image ${index + 1} of ${product.name}`}
-                    >
-                      <img
-                        src={image}
-                        alt={`${product.name} view ${index + 1}`}
-                        className="pd-gallery-thumb-img"
-                        onError={handleImageError}
-                        loading="lazy"
-                      />
-                    </button>
-                  ))}
-                </div>
-              )}
+              <img
+                src={product.image_url}
+                alt={product.name}
+                className="pd-image"
+                onError={handleImageError}
+                loading="eager"
+              />
             </div>
           </div>
 
@@ -305,6 +218,7 @@ const ProductDetails = () => {
               </div>
 
               <div className="pd-price-panel">
+<<<<<<< HEAD
                 <div className="pd-price-copy">
                   <div className="pd-price-label">Offer Price</div>
                   <div className="pd-price">Rs {formatCurrency(currentPrice)}</div>
@@ -317,9 +231,14 @@ const ProductDetails = () => {
                   {savingsAmount > 0 && (
                     <div className="pd-price-save">You save Rs {formatCurrency(savingsAmount)}</div>
                   )}
+=======
+                <div>
+                  <div className="pd-price-label">Price</div>
+                  <div className="pd-price">Rs {Number(product.price).toLocaleString("en-IN")}</div>
+>>>>>>> parent of 1362c51 (updated product details page)
                 </div>
                 <div className="pd-price-note">
-                  {isAvailableSoon ? "Launching soon" : "Limited offer on our Redensyl-led everyday care formula"}
+                  {isAvailableSoon ? "Launching soon" : "Made for a simple, repeatable routine"}
                 </div>
               </div>
 
@@ -429,9 +348,9 @@ const ProductDetails = () => {
         <section className="pd-story-grid">
           <section className="pd-section-card pd-section-card--story">
             <span className="pd-section-kicker">Product overview</span>
-            <h2>Redensyl-led care, made simpler.</h2>
+            <h2>Less clutter, more clarity.</h2>
             <p className="pd-long-copy">
-              {"A Redensyl-focused formula created to support healthier-looking roots, reduce routine clutter, and bring more intention to everyday hair care."}
+              {"A refined botanical formula designed to bring more clarity and calm to everyday hair care."}
             </p>
           </section>
 
