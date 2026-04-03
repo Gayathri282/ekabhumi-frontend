@@ -4,6 +4,7 @@ import { fetchProductById } from "../api/publicAPI";
 import BuyModal from "../components/Buy";
 import PublicNavbar from "../components/PublicNavbar";
 import Footer from "./Footer";
+import { formatCurrency, getProductPricing } from "../utils/productPricing";
 import "./ProductDetails.css";
 
 const PRODUCT_COMPARE_ROWS = [
@@ -129,38 +130,11 @@ const ProductDetails = () => {
     window.dispatchEvent(new Event("cart:updated"));
   };
 
-  const currentPrice = Number(
-    product?.selling_price
-    ?? product?.sale_price
-    ?? product?.offer_price
-    ?? product?.price
-    ?? 0
-  );
-
-  const originalPrice = useMemo(() => {
-    const explicitOriginal = Number(
-      product?.original_price
-      ?? product?.compare_at_price
-      ?? product?.mrp
-      ?? product?.list_price
-      ?? 0
-    );
-
-    if (explicitOriginal > currentPrice) {
-      return explicitOriginal;
-    }
-
-    if (!currentPrice) {
-      return 0;
-    }
-
-    return Math.ceil((currentPrice * 1.18) / 10) * 10;
-  }, [product, currentPrice]);
-
-  const savingsAmount = Math.max(0, originalPrice - currentPrice);
-  const discountPercent = originalPrice > currentPrice
-    ? Math.round((savingsAmount / originalPrice) * 100)
-    : 0;
+  const pricing = useMemo(() => getProductPricing(product), [product]);
+  const currentPrice = pricing.offerPrice;
+  const originalPrice = pricing.basePrice;
+  const savingsAmount = pricing.savings;
+  const discountPercent = pricing.discountPercent;
 
   const addToCart = () => {
     if (!product) return;
@@ -177,6 +151,8 @@ const ProductDetails = () => {
           id: product.id,
           name: product.name,
           price: currentPrice,
+          original_price: originalPrice,
+          offer_price: currentPrice,
           image_url: product.image_url,
           qty: quantity,
         }]
@@ -331,15 +307,15 @@ const ProductDetails = () => {
               <div className="pd-price-panel">
                 <div className="pd-price-copy">
                   <div className="pd-price-label">Offer Price</div>
-                  <div className="pd-price">Rs {currentPrice.toLocaleString("en-IN")}</div>
+                  <div className="pd-price">Rs {formatCurrency(currentPrice)}</div>
                   <div className="pd-price-meta">
-                    <span className="pd-price-original">MRP Rs {originalPrice.toLocaleString("en-IN")}</span>
+                    <span className="pd-price-original">MRP Rs {formatCurrency(originalPrice)}</span>
                     {discountPercent > 0 && (
                       <span className="pd-discount-pill">{discountPercent}% off</span>
                     )}
                   </div>
                   {savingsAmount > 0 && (
-                    <div className="pd-price-save">You save Rs {savingsAmount.toLocaleString("en-IN")}</div>
+                    <div className="pd-price-save">You save Rs {formatCurrency(savingsAmount)}</div>
                   )}
                 </div>
                 <div className="pd-price-note">
@@ -394,18 +370,18 @@ const ProductDetails = () => {
         <section className="pd-proof-strip">
           <article className="pd-proof-card">
             <span className="pd-proof-num">01</span>
-            <h3>Redensyl support</h3>
-            <p>Focused on a modern active known for supporting healthier looking roots and fuller looking hair.</p>
+            <h3>Redensyl focused</h3>
+            <p>Built around a modern active known for supporting healthier looking roots and fuller looking hair.</p>
           </article>
           <article className="pd-proof-card">
             <span className="pd-proof-num">02</span>
-            <h3>Scalp first care</h3>
-            <p>This formula is designed to care for the scalp environment where stronger hair growth begins.</p>
+            <h3>Root level support</h3>
+            <p>Created to care for the scalp environment so the routine starts where stronger hair begins.</p>
           </article>
           <article className="pd-proof-card">
             <span className="pd-proof-num">03</span>
-            <h3>Daily Redensyl ritual</h3>
-            <p>Consistent everyday use matters most, which is why the routine is kept simple, steady, and easy to repeat.</p>
+            <h3>Daily ritual</h3>
+            <p>Redensyl works best with steady use, which is why the formula is made for simple everyday consistency.</p>
           </article>
         </section>
 

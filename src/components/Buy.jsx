@@ -3,10 +3,10 @@ import "./Buy.css";
 
 import { createOrder, createRazorpayOrder, verifyRazorpayPayment } from "../api/publicAPI";
 import { googleLogin, hasSession } from "../api/authAPI";
+import { getProductPricing } from "../utils/productPricing";
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
-// UI-only shipping estimate (backend is source of truth)
 const getShippingCharge = (pincode) => {
   if (!pincode || pincode.length < 2) return 0;
 
@@ -37,7 +37,6 @@ const getShippingCharge = (pincode) => {
   }
 };
 
-// ── Login Gate Modal ──────────────────────────────────────────────────────────
 const LoginGate = ({ onClose, onLoginSuccess }) => {
   const googleBtnRef = useRef(null);
   const [googleReady, setGoogleReady] = useState(false);
@@ -87,9 +86,7 @@ const LoginGate = ({ onClose, onLoginSuccess }) => {
           } catch (e) {
             alert(e?.message || "Login failed");
           } finally {
-            if (active) {
-              setLoginLoading(false);
-            }
+            if (active) setLoginLoading(false);
           }
         },
         auto_select: false,
@@ -131,19 +128,13 @@ const LoginGate = ({ onClose, onLoginSuccess }) => {
     };
   }, [onLoginSuccess, persistUser]);
 
-  // Listen for login success from storage (set by Home's handleCredential)
   useEffect(() => {
     const check = () => {
-      if (hasSession()) {
-        onLoginSuccess?.();
-      }
+      if (hasSession()) onLoginSuccess?.();
     };
     window.addEventListener("storage", check);
-    // Poll every 500ms in case storage event doesn't fire in same tab
     const interval = setInterval(() => {
-      if (hasSession()) {
-        onLoginSuccess?.();
-      }
+      if (hasSession()) onLoginSuccess?.();
     }, 500);
     return () => {
       window.removeEventListener("storage", check);
@@ -158,14 +149,20 @@ const LoginGate = ({ onClose, onLoginSuccess }) => {
         onMouseDown={(e) => e.stopPropagation()}
         style={{ maxWidth: 400, padding: "36px 32px", textAlign: "center" }}
       >
-        {/* Icon */}
-        <div style={{
-          width: 64, height: 64, borderRadius: "50%",
-          background: "#fff3ec", margin: "0 auto 20px",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 28,
-        }}>
-          🛍️
+        <div
+          style={{
+            width: 64,
+            height: 64,
+            borderRadius: "50%",
+            background: "#fff3ec",
+            margin: "0 auto 20px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 28,
+          }}
+        >
+          Shop
         </div>
 
         <h2 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a1a", marginBottom: 8 }}>
@@ -175,7 +172,6 @@ const LoginGate = ({ onClose, onLoginSuccess }) => {
           Please sign in with Google before billing so we can prefill your details and help you track your order later.
         </p>
 
-        {/* Google Sign In Button */}
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
           <div ref={googleBtnRef} />
         </div>
@@ -201,8 +197,11 @@ const LoginGate = ({ onClose, onLoginSuccess }) => {
         <button
           onClick={onClose}
           style={{
-            background: "none", border: "none",
-            color: "#999", fontSize: 13, cursor: "pointer",
+            background: "none",
+            border: "none",
+            color: "#999",
+            fontSize: 13,
+            cursor: "pointer",
             textDecoration: "underline",
           }}
         >
@@ -213,7 +212,6 @@ const LoginGate = ({ onClose, onLoginSuccess }) => {
   );
 };
 
-// ── Main BuyModal ─────────────────────────────────────────────────────────────
 const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
   const [orderLoading, setOrderLoading] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState("Processing...");
@@ -236,12 +234,13 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
     () => getShippingCharge(orderForm.pincode),
     [orderForm.pincode]
   );
+  const pricing = useMemo(() => getProductPricing(product), [product]);
 
   const totalPriceEstimate = useMemo(() => {
     if (!product) return 0;
-    const base = Number(product.price || 0) * Number(quantity || 1);
+    const base = Number(pricing.offerPrice || 0) * Number(quantity || 1);
     return base + Number(deliveryFeeEstimate || 0);
-  }, [product, quantity, deliveryFeeEstimate]);
+  }, [product, pricing.offerPrice, quantity, deliveryFeeEstimate]);
 
   useEffect(() => {
     if (!open) return;
@@ -249,7 +248,6 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
     verifiedRef.current = false;
     setShowLoginGate(!hasSession());
 
-    // ── Auto-prefill email from logged-in user ──
     try {
       const stored = JSON.parse(localStorage.getItem("userData") || "{}");
       setOrderForm({
@@ -264,8 +262,14 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
       });
     } catch {
       setOrderForm({
-        fullName: "", phoneNumber: "", email: "",
-        address: "", city: "", state: "", pincode: "", notes: "",
+        fullName: "",
+        phoneNumber: "",
+        email: "",
+        address: "",
+        city: "",
+        state: "",
+        pincode: "",
+        notes: "",
       });
     }
   }, [open]);
@@ -284,14 +288,15 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e) => { if (e.key === "Escape" && !orderLoading) safeClose(); };
+    const onKey = (e) => {
+      if (e.key === "Escape" && !orderLoading) safeClose();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, orderLoading, safeClose]);
 
   if (!open) return null;
 
-  // ── Show login gate if user clicks Proceed without being logged in ──
   if (showLoginGate) {
     return (
       <LoginGate
@@ -301,10 +306,9 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
         }}
         onLoginSuccess={() => {
           setShowLoginGate(false);
-          // Prefill email after login
           try {
             const stored = JSON.parse(localStorage.getItem("userData") || "{}");
-            setOrderForm(prev => ({
+            setOrderForm((prev) => ({
               ...prev,
               fullName: prev.fullName || stored?.name || "",
               email: prev.email || stored?.email || "",
@@ -356,10 +360,8 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
   };
 
   const handleSubmit = async () => {
-    if (orderLoading) return;
-    if (!product) return;
+    if (orderLoading || !product) return;
 
-    // ── Gate: must be logged in to place order ──
     if (!hasSession()) {
       setShowLoginGate(true);
       return;
@@ -378,8 +380,7 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
     verifiedRef.current = false;
 
     try {
-      // Small warmup delay so user sees the message
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
       setLoadingMsg("Creating your order...");
 
       const orderPayload = {
@@ -393,9 +394,7 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
         notes: orderForm.notes || null,
       };
 
-      // 1) Create DB order
       const created = await createOrder(orderPayload);
-
       const orderObj = created?.order;
       const dbOrderId = orderObj?.id;
       const publicToken = created?.public_token;
@@ -408,10 +407,11 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
       localStorage.setItem("last_order_id", String(dbOrderId));
 
       const total = Number(orderObj?.total_amount || 0);
-      if (!total || total <= 0) throw new Error("Invalid server total. Please try again.");
+      if (!total || total <= 0) {
+        throw new Error("Invalid server total. Please try again.");
+      }
       setPayableAmount(total);
 
-      // 2) Create Razorpay order
       const rp = await createRazorpayOrder({
         order_id: dbOrderId,
         email: orderForm.email,
@@ -422,7 +422,6 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
         throw new Error("Failed to create Razorpay order (bad server response).");
       }
 
-      // 3) Open Razorpay Checkout
       const options = {
         key: rp.keyId,
         amount: rp.amount,
@@ -463,10 +462,9 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
       const rzp = new window.Razorpay(options);
       rzp.on("payment.failed", (resp) => {
         console.error(resp);
-        alert("❌ Payment failed. Please try again.");
+        alert("Payment failed. Please try again.");
       });
       rzp.open();
-
     } catch (err) {
       console.error(err);
       alert(err?.message || "Something went wrong. Please try again.");
@@ -478,13 +476,12 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
   return (
     <div className="buy-overlay" onMouseDown={safeClose}>
       <div className="buy-modal" onMouseDown={(e) => e.stopPropagation()}>
-
         <div className="buy-head">
           <div>
             <h2 className="buy-title">Complete Your Order</h2>
             <p className="buy-sub">Secure Checkout • Doorstep Delivery</p>
           </div>
-          <button className="buy-close" onClick={safeClose}>×</button>
+          <button className="buy-close" onClick={safeClose}>x</button>
         </div>
 
         <div className="buy-body">
@@ -493,19 +490,19 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
 
             <div className="buy-row">
               <span>{product?.name} (x{quantity})</span>
-              <span>₹{(Number(product?.price || 0) * Number(quantity || 1)).toFixed(2)}</span>
+              <span>{`Rs ${(Number(pricing.offerPrice || 0) * Number(quantity || 1)).toFixed(2)}`}</span>
             </div>
 
             <div className="buy-row">
               <span>Delivery Charge (estimate)</span>
               <span className={deliveryFeeEstimate > 0 ? "buy-fee-active" : ""}>
-                {deliveryFeeEstimate > 0 ? `+ ₹${deliveryFeeEstimate}` : "Enter Pincode"}
+                {deliveryFeeEstimate > 0 ? `+ Rs ${deliveryFeeEstimate}` : "Enter Pincode"}
               </span>
             </div>
 
             <div className="buy-row buy-total">
               <span>Estimated Total</span>
-              <span>₹{Number(totalPriceEstimate).toFixed(2)}</span>
+              <span>{`Rs ${Number(totalPriceEstimate).toFixed(2)}`}</span>
             </div>
 
             <div className="buy-row" style={{ marginTop: 8 }}>
@@ -517,7 +514,7 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
             {payableAmount != null && (
               <div className="buy-row buy-total" style={{ marginTop: 10 }}>
                 <span>Server Total</span>
-                <span>₹{Number(payableAmount).toFixed(2)}</span>
+                <span>{`Rs ${Number(payableAmount).toFixed(2)}`}</span>
               </div>
             )}
           </div>
@@ -576,11 +573,10 @@ const BuyModal = ({ open, onClose, product, quantity, onSuccess }) => {
             {orderLoading
               ? loadingMsg
               : payableAmount != null
-              ? `Pay ₹${Number(payableAmount).toFixed(2)}`
-              : "Proceed to Pay"}
+                ? `Pay Rs ${Number(payableAmount).toFixed(2)}`
+                : "Proceed to Pay"}
           </button>
         </div>
-
       </div>
     </div>
   );

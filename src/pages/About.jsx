@@ -95,8 +95,8 @@ const About = () => {
             <div className="about-note-card">
               <span className="about-note-card__label">Why it stands out</span>
               <p className="about-note-card__text">
-                A modern botanical active designed to support fuller-looking hair with a
-                gentle, non-hormonal approach.
+                A modern botanical active designed to support fuller looking hair with a
+                gentle, non hormonal approach.
               </p>
             </div>
           </div>

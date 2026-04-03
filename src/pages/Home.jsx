@@ -483,8 +483,8 @@ const Home = () => {
           <div className="hero-grid">
             <div className="hero-content">
               <div className="hero-card">
-                <span className="hero-eyebrow">Minimal botanical care</span>
-                <h1 className="hero-heading">Quiet care for stronger hair.</h1>
+                <span className="hero-eyebrow">Eka Bhumih x Redensyl</span>
+                <h1 className="hero-heading">Hair care shaped by roots, ritual, and Redensyl.</h1>
                 <p className="hero-sub">
                   Eka Bhumih brings Redensyl led hair care into a calmer, cleaner routine
                   with fewer steps, softer visuals, and ingredients that stay in focus.
@@ -505,8 +505,8 @@ const Home = () => {
                     <strong>Science backed and botanical led</strong>
                   </div>
                   <div className="hero-insight-card">
-                    <span>Minimal routine</span>
-                    <strong>Designed to feel easy every day</strong>
+                    <span>Our daily ritual</span>
+                    <strong>Made to feel simple, premium, and easy to repeat</strong>
                   </div>
                 </div>
               </div>
@@ -517,7 +517,7 @@ const Home = () => {
                 <span className="hero-side-kicker">Featured formula</span>
                 <h3>{heroHighlightProduct?.name || "Signature Hair Growth Care"}</h3>
                 <p>
-                  { "A refined formula shaped for a cleaner, more grounded hair-care ritual."}
+                  { "A refined formula shaped for a cleaner, more grounded hair care ritual."}
                 </p>
                 <button type="button" className="hero-side-action" onClick={goToPriorityOneProduct}>
                   View product
