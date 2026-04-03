@@ -303,10 +303,10 @@ const Home = () => {
 
   const heroHighlightProduct = sortedProducts.find((p) => Number(p.priority) === 1) || sortedProducts[0] || null;
   const benefitCards = [
-    { stat: "3x", label: "More growth", text: "A focused routine built around visible scalp support." },
-    { stat: "84%", label: "Less fall", text: "Designed to support stronger strands with less noise." },
-    { stat: "100%", label: "Botanical lead", text: "Plant-led care with a cleaner, calmer point of view." },
-    { stat: "90", label: "Day ritual", text: "Consistency matters more than complexity." },
+    { stat: "Redensyl", label: "Root focused care", text: "Eka Bhumih builds each ritual around stronger looking roots and healthier looking growth." },
+    { stat: "Botanical", label: "Brand philosophy", text: "Our formulas pair modern hair care intent with a softer botanical point of view." },
+    { stat: "Daily", label: "Simple routine", text: "Our product story is built for everyday use, not for crowded shelves and complicated steps." },
+    { stat: "Visible", label: "Hair support", text: "Consistent use is designed to support fuller looking, calmer, better cared for hair over time." },
   ];
 
   const renderAuthSection = () => (
@@ -483,11 +483,11 @@ const Home = () => {
           <div className="hero-grid">
             <div className="hero-content">
               <div className="hero-card">
-                <span className="hero-eyebrow">Minimal botanical care</span>
-                <h1 className="hero-heading">Quiet care for stronger hair.</h1>
+                <span className="hero-eyebrow">Eka Bhumih x Redensyl</span>
+                <h1 className="hero-heading">Hair care shaped by roots, ritual, and Redensyl.</h1>
                 <p className="hero-sub">
-                  Eka Bhumih brings Redensyl-led hair care into a calmer, cleaner routine
-                  with fewer steps, softer visuals, and ingredients that stay in focus.
+                  Eka Bhumih brings Redensyl into a more thoughtful everyday ritual with
+                  focused scalp support, botanical softness, and a cleaner path to healthier looking hair.
                 </p>
 
                 <div className="hero-cta-row">
@@ -501,12 +501,12 @@ const Home = () => {
 
                 <div className="hero-insight-row">
                   <div className="hero-insight-card">
-                    <span>Focused formula</span>
-                    <strong>Science-backed and botanical-led</strong>
+                    <span>Our formula story</span>
+                    <strong>Redensyl support with a botanical care perspective</strong>
                   </div>
                   <div className="hero-insight-card">
-                    <span>Minimal routine</span>
-                    <strong>Designed to feel easy every day</strong>
+                    <span>Our daily ritual</span>
+                    <strong>Made to feel simple, premium, and easy to repeat</strong>
                   </div>
                 </div>
               </div>
@@ -517,7 +517,7 @@ const Home = () => {
                 <span className="hero-side-kicker">Featured formula</span>
                 <h3>{heroHighlightProduct?.name || "Signature Hair Growth Care"}</h3>
                 <p>
-                  { "A refined formula shaped for a cleaner, more grounded hair-care ritual."}
+                  { "A refined formula shaped for a cleaner, more grounded hair care ritual."}
                 </p>
                 <button type="button" className="hero-side-action" onClick={goToPriorityOneProduct}>
                   View product
@@ -530,8 +530,8 @@ const Home = () => {
 
       <section className="benefits-strip">
         <div className="benefits-head">
-          <span className="benefits-kicker">A clearer routine</span>
-          <h2>Everything on the homepage now leans quieter, lighter, and more intentional.</h2>
+          <span className="benefits-kicker">Our Redensyl approach</span>
+          <h2>Eka Bhumih is built around calmer hair rituals, cleaner formulas, and root focused everyday care.</h2>
         </div>
 
         <div className="benefits-inner">
