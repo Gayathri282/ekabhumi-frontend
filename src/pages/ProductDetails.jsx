@@ -96,12 +96,15 @@ const ProductDetails = () => {
   };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   const pricing = useMemo(() => getProductPricing(product), [product]);
   const currentPrice = pricing.offerPrice;
   const originalPrice = pricing.basePrice;
   const savingsAmount = pricing.savings;
   const discountPercent = pricing.discountPercent;
 
+=======
+>>>>>>> parent of 1362c51 (updated product details page)
 =======
 >>>>>>> parent of 1362c51 (updated product details page)
   const addToCart = () => {
@@ -119,9 +122,13 @@ const ProductDetails = () => {
           id: product.id,
           name: product.name,
 <<<<<<< HEAD
+<<<<<<< HEAD
           price: currentPrice,
           original_price: originalPrice,
           offer_price: currentPrice,
+=======
+          price: product.price,
+>>>>>>> parent of 1362c51 (updated product details page)
 =======
           price: product.price,
 >>>>>>> parent of 1362c51 (updated product details page)
@@ -219,6 +226,7 @@ const ProductDetails = () => {
 
               <div className="pd-price-panel">
 <<<<<<< HEAD
+<<<<<<< HEAD
                 <div className="pd-price-copy">
                   <div className="pd-price-label">Offer Price</div>
                   <div className="pd-price">Rs {formatCurrency(currentPrice)}</div>
@@ -231,6 +239,11 @@ const ProductDetails = () => {
                   {savingsAmount > 0 && (
                     <div className="pd-price-save">You save Rs {formatCurrency(savingsAmount)}</div>
                   )}
+=======
+                <div>
+                  <div className="pd-price-label">Price</div>
+                  <div className="pd-price">Rs {Number(product.price).toLocaleString("en-IN")}</div>
+>>>>>>> parent of 1362c51 (updated product details page)
 =======
                 <div>
                   <div className="pd-price-label">Price</div>

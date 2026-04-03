@@ -303,17 +303,10 @@ const Home = () => {
 
   const heroHighlightProduct = sortedProducts.find((p) => Number(p.priority) === 1) || sortedProducts[0] || null;
   const benefitCards = [
-<<<<<<< HEAD
-    { stat: "Redensyl", label: "Root focused care", text: "Eka Bhumih builds each ritual around stronger looking roots and healthier looking growth." },
-    { stat: "Botanical", label: "Brand philosophy", text: "Our formulas pair modern hair care intent with a softer botanical point of view." },
-    { stat: "Daily", label: "Simple routine", text: "Our product story is built for everyday use, not for crowded shelves and complicated steps." },
-    { stat: "Visible", label: "Hair support", text: "Consistent use is designed to support fuller looking, calmer, better cared for hair over time." },
-=======
-    { stat: "Redensyl", label: "Root support", text: "A formula story shaped around targeted scalp care and healthier-looking growth." },
-    { stat: "Daily", label: "Hair ritual", text: "Designed to fit into an easy everyday routine you can actually stay consistent with." },
-    { stat: "Botanical", label: "Calmer care", text: "Plant-led support with a softer, cleaner feel for modern hair care." },
-    { stat: "Stronger", label: "Less breakage", text: "Made to support fuller-looking hair with a routine-first approach over time." },
->>>>>>> parent of 1362c51 (updated product details page)
+    { stat: "3x", label: "More growth", text: "A focused routine built around visible scalp support." },
+    { stat: "84%", label: "Less fall", text: "Designed to support stronger strands with less noise." },
+    { stat: "100%", label: "Botanical lead", text: "Plant-led care with a cleaner, calmer point of view." },
+    { stat: "90", label: "Day ritual", text: "Consistency matters more than complexity." },
   ];
 
   const renderAuthSection = () => (
@@ -537,13 +530,8 @@ const Home = () => {
 
       <section className="benefits-strip">
         <div className="benefits-head">
-<<<<<<< HEAD
-          <span className="benefits-kicker">Our Redensyl approach</span>
-          <h2>Eka Bhumih is built around calmer hair rituals, cleaner formulas, and root focused everyday care.</h2>
-=======
-          <span className="benefits-kicker">Redensyl-led care</span>
-          <h2>Hair care shaped around stronger roots, steadier routines, and a cleaner botanical story.</h2>
->>>>>>> parent of 1362c51 (updated product details page)
+          <span className="benefits-kicker">A clearer routine</span>
+          <h2>Everything on the homepage now leans quieter, lighter, and more intentional.</h2>
         </div>
 
         <div className="benefits-inner">
