@@ -9,7 +9,7 @@ import "./ProductDetails.css";
 const PRODUCT_COMPARE_ROWS = [
   {
     label: "Formula direction",
-    ours: "Botanical-led care designed for a cleaner, calmer routine.",
+    ours: "Botanical led care designed for a cleaner, calmer routine.",
     typical: "Often built around generic positioning with less emphasis on ritual.",
   },
   {
@@ -24,7 +24,7 @@ const PRODUCT_COMPARE_ROWS = [
   },
   {
     label: "Ingredient story",
-    ours: "Redensyl-focused with a botanical, modern-care identity.",
+    ours: "Redensyl focused with a botanical, modern care identity.",
     typical: "Broader claims without a clearly framed hero active.",
   },
 ];
@@ -43,7 +43,7 @@ const RESULTS_STEPS = [
   {
     phase: "Weeks 8-12",
     title: "Visible support",
-    copy: "With consistent use, users often look for fuller-looking, healthier-feeling hair over time.",
+    copy: "With consistent use, users often look for fuller looking, healthier feeling hair over time.",
   },
 ];
 
@@ -343,7 +343,7 @@ const ProductDetails = () => {
                   )}
                 </div>
                 <div className="pd-price-note">
-                  {isAvailableSoon ? "Launching soon" : "Limited offer on our Redensyl-led everyday care formula"}
+                  {isAvailableSoon ? "Launching soon" : "Limited offer on our Redensyl led everyday care formula"}
                 </div>
               </div>
 
@@ -394,18 +394,18 @@ const ProductDetails = () => {
         <section className="pd-proof-strip">
           <article className="pd-proof-card">
             <span className="pd-proof-num">01</span>
-            <h3>Cleaner experience</h3>
-            <p>Designed to feel calm, premium, and easier to keep using.</p>
+            <h3>Redensyl support</h3>
+            <p>Focused on a modern active known for supporting healthier looking roots and fuller looking hair.</p>
           </article>
           <article className="pd-proof-card">
             <span className="pd-proof-num">02</span>
-            <h3>Clear positioning</h3>
-            <p>Redensyl-led care with a simpler, more intentional story.</p>
+            <h3>Scalp first care</h3>
+            <p>This formula is designed to care for the scalp environment where stronger hair growth begins.</p>
           </article>
           <article className="pd-proof-card">
             <span className="pd-proof-num">03</span>
-            <h3>Routine-first</h3>
-            <p>The best product is the one you can actually stay consistent with.</p>
+            <h3>Daily Redensyl ritual</h3>
+            <p>Consistent everyday use matters most, which is why the routine is kept simple, steady, and easy to repeat.</p>
           </article>
         </section>
 
