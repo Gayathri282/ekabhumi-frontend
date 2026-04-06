@@ -130,7 +130,7 @@ const ProductDetails = () => {
     e.target.src = "https://placehold.co/900x900/EDF5EF/1B4332?text=Product";
   };
 
-  const totalPrice = useMemo(() => Number(product?.price || 0) * quantity, [product, quantity]);
+  const totalPrice = useMemo(() => currentPrice * quantity, [currentPrice, quantity]);
   const isAvailableSoon = Number(product?.quantity ?? 0) <= 0;
   const shortDescription = useMemo(() => {
     if (!product?.description) {
