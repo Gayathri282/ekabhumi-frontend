@@ -10,7 +10,7 @@ import "./ProductDetails.css";
 const PRODUCT_COMPARE_ROWS = [
   {
     label: "Formula direction",
-    ours: "Botanical-led care designed for a cleaner, calmer routine.",
+    ours: "Botanical led care designed for a cleaner, calmer routine.",
     typical: "Often built around generic positioning with less emphasis on ritual.",
   },
   {
@@ -25,7 +25,7 @@ const PRODUCT_COMPARE_ROWS = [
   },
   {
     label: "Ingredient story",
-    ours: "Redensyl-focused with a botanical, modern-care identity.",
+    ours: "Redensyl focused with a botanical, modern care identity.",
     typical: "Broader claims without a clearly framed hero active.",
   },
 ];
@@ -44,7 +44,7 @@ const RESULTS_STEPS = [
   {
     phase: "Weeks 8-12",
     title: "Visible support",
-    copy: "With consistent use, users often look for fuller-looking, healthier-feeling hair over time.",
+    copy: "With consistent use, users often look for fuller looking, healthier feeling hair over time.",
   },
 ];
 
@@ -95,18 +95,12 @@ const ProductDetails = () => {
     window.dispatchEvent(new Event("cart:updated"));
   };
 
-<<<<<<< HEAD
-<<<<<<< HEAD
   const pricing = useMemo(() => getProductPricing(product), [product]);
   const currentPrice = pricing.offerPrice;
   const originalPrice = pricing.basePrice;
   const savingsAmount = pricing.savings;
   const discountPercent = pricing.discountPercent;
 
-=======
->>>>>>> parent of 1362c51 (updated product details page)
-=======
->>>>>>> parent of 1362c51 (updated product details page)
   const addToCart = () => {
     if (!product) return;
     const cart = getCart();
@@ -121,17 +115,9 @@ const ProductDetails = () => {
         : [...cart, {
           id: product.id,
           name: product.name,
-<<<<<<< HEAD
-<<<<<<< HEAD
           price: currentPrice,
           original_price: originalPrice,
           offer_price: currentPrice,
-=======
-          price: product.price,
->>>>>>> parent of 1362c51 (updated product details page)
-=======
-          price: product.price,
->>>>>>> parent of 1362c51 (updated product details page)
           image_url: product.image_url,
           qty: quantity,
         }]
@@ -225,8 +211,6 @@ const ProductDetails = () => {
               </div>
 
               <div className="pd-price-panel">
-<<<<<<< HEAD
-<<<<<<< HEAD
                 <div className="pd-price-copy">
                   <div className="pd-price-label">Offer Price</div>
                   <div className="pd-price">Rs {formatCurrency(currentPrice)}</div>
@@ -239,19 +223,9 @@ const ProductDetails = () => {
                   {savingsAmount > 0 && (
                     <div className="pd-price-save">You save Rs {formatCurrency(savingsAmount)}</div>
                   )}
-=======
-                <div>
-                  <div className="pd-price-label">Price</div>
-                  <div className="pd-price">Rs {Number(product.price).toLocaleString("en-IN")}</div>
->>>>>>> parent of 1362c51 (updated product details page)
-=======
-                <div>
-                  <div className="pd-price-label">Price</div>
-                  <div className="pd-price">Rs {Number(product.price).toLocaleString("en-IN")}</div>
->>>>>>> parent of 1362c51 (updated product details page)
                 </div>
                 <div className="pd-price-note">
-                  {isAvailableSoon ? "Launching soon" : "Made for a simple, repeatable routine"}
+                  {isAvailableSoon ? "Launching soon" : "Limited offer on our Redensyl led everyday care formula"}
                 </div>
               </div>
 
