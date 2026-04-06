@@ -41,11 +41,8 @@ const fetchWithRetry = async (url, options, retries = 3, delayMs = 5000) => {
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export async function fetchProducts() {
-  // No Cache-Control: no-cache — let the browser cache this for the session.
-  // The product list rarely changes mid-session; localStorage is the source of
-  // truth for cross-session freshness.
   const res = await fetch(getUrl("/products"), {
-    headers: { Accept: "application/json" },
+    headers: { Accept: "application/json", "Cache-Control": "no-cache" },
     mode: "cors",
     credentials: "omit",
   });
@@ -68,7 +65,7 @@ export async function fetchProducts() {
 
 export async function fetchProductById(id) {
   const res = await fetch(getUrl(`/products/${id}`), {
-    headers: { Accept: "application/json" },
+    headers: { Accept: "application/json", "Cache-Control": "no-cache" },
   });
 
   return handleJson(res, "Failed to fetch product");
