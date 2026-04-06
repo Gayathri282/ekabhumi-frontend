@@ -41,8 +41,8 @@ const fetchWithRetry = async (url, options, retries = 3, delayMs = 5000) => {
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export async function fetchProducts() {
-  const res = await fetch(getUrl("/products"), {
-    headers: { Accept: "application/json", "Cache-Control": "no-cache" },
+  const res = await fetch(getUrl(`/products?_=${Date.now()}`), {
+    headers: { Accept: "application/json" },
     mode: "cors",
     credentials: "omit",
   });
@@ -64,8 +64,8 @@ export async function fetchProducts() {
 }
 
 export async function fetchProductById(id) {
-  const res = await fetch(getUrl(`/products/${id}`), {
-    headers: { Accept: "application/json", "Cache-Control": "no-cache" },
+  const res = await fetch(getUrl(`/products/${id}?_=${Date.now()}`), {
+    headers: { Accept: "application/json" },
   });
 
   return handleJson(res, "Failed to fetch product");
